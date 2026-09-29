@@ -878,15 +878,15 @@
 
 
 
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Copy, Edit2, Gift, Phone, Save, Share as ShareIcon, Wallet, X } from "lucide-react-native";
-import React, { memo, useCallback, useEffect, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import React, { memo, useCallback, useState } from "react";
 
 
 import {
   ActivityIndicator,
   Alert,
+  Clipboard,
   Keyboard,
   KeyboardAvoidingView,
   Linking,
@@ -898,8 +898,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Clipboard
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../components/Header";
@@ -912,8 +911,8 @@ import { useNotification } from "../hooks/useNotification";
 import { supabase } from "../lib/supabase";
 import { COLORS } from "../theme/colors";
 // import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
-import { generateReferralCode } from "../utils/referralUtils";
 import { isTempEmail } from "../utils/authUtils";
+import { generateReferralCode } from "../utils/referralUtils";
 
 /* ======================================================
    FIELD CARD (MOVED OUTSIDE – FIXES KEYBOARD ISSUE)
@@ -1025,54 +1024,83 @@ export default function ProfileScreen() {
 
       if (!user) return;
 
-      setUserId(user.id);
+      // 1. Extract the phone number for the catch-all search
+      const rawPhone = user.phone || user.user_metadata?.phone_number || "";
+      const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
 
-      const { data, error } = await supabase
-        .from("profile")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+      let profileData = null;
 
-      if (data) {
-        let currentCode = data.referral_code;
+      // 2. CATCH-ALL SEARCH: Find the profile by phone number first
+      if (cleanPhone) {
+        const { data: phoneData } = await supabase
+          .from("profile")
+          .select("*")
+          .ilike("phone", `%${cleanPhone}`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        profileData = phoneData;
+      }
+
+      // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
+      if (!profileData) {
+        const { data: idData } = await supabase
+          .from("profile")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        profileData = idData;
+      }
+
+      if (profileData) {
+        // CRITICAL: Set the active ID to the Profile's true legacy ID. 
+        // This ensures edits and wallet checks map to the correct legacy data!
+        const activeProfileId = profileData.id;
+        setUserId(activeProfileId);
+
+        let currentCode = profileData.referral_code;
 
         // If no referral code exists, generate and save one
         if (!currentCode) {
-          currentCode = generateReferralCode(data.full_name || user.email || "User");
+          currentCode = generateReferralCode(profileData.full_name || user.email || "User");
           await supabase
             .from("profile")
             .update({ referral_code: currentCode })
-            .eq("id", user.id);
+            .eq("id", activeProfileId);
         }
 
         setReferralCode(currentCode);
 
-        const dbEmail = data.email || user.email || "";
+        const dbEmail = profileData.email || user.email || "";
         const finalEmail = isTempEmail(dbEmail) ? "" : dbEmail;
 
         setFormData({
-          full_name: data.full_name || "",
+          full_name: profileData.full_name || "",
           email: finalEmail,
-          phone: data.phone || "",
-          address: data.address || "",
-          pincode: data.pincode || "",
+          phone: profileData.phone || "",
+          address: profileData.address || "",
+          pincode: profileData.pincode || "",
         });
 
-        // Fetch Wallet Balance
+        // Fetch Wallet Balance using the true legacy ID
         const { data: walletData } = await supabase
           .from("wallet")
           .select("balance")
-          .eq("user_id", user.id)
+          .eq("user_id", activeProfileId)
           .maybeSingle();
 
         if (walletData) {
           setWalletBalance(walletData.balance || 0);
         } else {
           // Initialize wallet if it doesn't exist
-          await supabase.from("wallet").insert({ user_id: user.id, balance: 0 });
+          await supabase.from("wallet").insert({ user_id: activeProfileId, balance: 0 });
           setWalletBalance(0);
         }
       } else {
+        // Brand new user scenario
+        setUserId(user.id);
         const fallbackEmail = user.email || "";
         const finalFallback = isTempEmail(fallbackEmail) ? "" : fallbackEmail;
         setFormData((p) => ({
@@ -1226,48 +1254,48 @@ export default function ProfileScreen() {
   //   });
   // };
 
-const handleLogout = () => {
-  Alert.alert(
-    "Logout",
-    "Are you sure you want to logout?",
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            console.log("[LOGOUT] Starting logout");
-
-            const { error } = await supabase.auth.signOut();
-
-            if (error) {
-              console.error("[LOGOUT] signOut error:", error);
-              throw error;
-            }
-
-            console.log("[LOGOUT] Logout successful");
-
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            });
-          } catch (err: any) {
-            console.error("[LOGOUT] Logout failed:", err);
-
-            showToast(
-              err?.message || "Unable to logout. Please try again.",
-              "error"
-            );
-          }
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]
-  );
-};
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              console.log("[LOGOUT] Starting logout");
+
+              const { error } = await supabase.auth.signOut();
+
+              if (error) {
+                console.error("[LOGOUT] signOut error:", error);
+                throw error;
+              }
+
+              console.log("[LOGOUT] Logout successful");
+
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+              });
+            } catch (err: any) {
+              console.error("[LOGOUT] Logout failed:", err);
+
+              showToast(
+                err?.message || "Unable to logout. Please try again.",
+                "error"
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchProfile();

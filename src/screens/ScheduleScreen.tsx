@@ -395,7 +395,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [serviceAreaContext, setServiceAreaContext] = useState<{name: string, pincode: string} | null>(null);
+  const [serviceAreaContext, setServiceAreaContext] = useState<{ name: string, pincode: string } | null>(null);
   const [manualAddress, setManualAddress] = useState("");
   const [pincode, setPincode] = useState("");
   const [bookingLatitude, setBookingLatitude] = useState<number | null>(null);
@@ -441,7 +441,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     const full = address.full_address || "";
     const match = full.match(/\b\d{6}\b/);
     const extractedPincode = address.pincode || (match ? match[0] : "");
-    
+
     setPincode(extractedPincode);
     setManualAddress(full);
     setBookingLatitude(address.latitude);
@@ -474,7 +474,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           full_address: editFullAddress.trim()
         })
         .eq('id', editingAddress.id);
-        
+
       if (!error) {
         setEditingAddress(null);
         fetchSavedAddresses(userId);
@@ -568,24 +568,44 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
   // Load Profile from Supabase
   const loadProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return;
 
-    setUserId(data.user.id);
+    // 1. Extract the phone number for the catch-all search
+    const rawPhone = authData.user.phone || authData.user.user_metadata?.phone_number || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
 
-    const { data: profileData, error } = await supabase
-      .from("profile")
-      .select("full_name,email,phone,address,pincode")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    let profileData = null;
 
-    if (error) {
-      console.error("Profile load error:", error);
-      setLoadingProfile(false);
-      return;
+    // 2. CATCH-ALL SEARCH: Find the profile by phone number first
+    if (cleanPhone) {
+      const { data: phoneData } = await supabase
+        .from("profile")
+        .select("id, full_name, email, phone, address, pincode")
+        .ilike("phone", `%${cleanPhone}`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      profileData = phoneData;
+    }
+
+    // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
+    if (!profileData) {
+      const { data: idData } = await supabase
+        .from("profile")
+        .select("id, full_name, email, phone, address, pincode")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+      profileData = idData;
     }
 
     if (profileData) {
+      // CRITICAL: Set the active ID to the Profile's true legacy ID.
+      // This automatically triggers fetchSavedAddresses to load the legacy addresses!
+      setUserId(profileData.id);
+
       const cleanedProfile = {
         ...profileData,
         phone: formatDisplayPhone(profileData.phone)
@@ -593,21 +613,22 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       setProfile(cleanedProfile);
 
       const selectedServiceArea = await LocationService.getSelectedServiceArea();
-      
+
       if (selectedServiceArea && selectedServiceArea.isServiceable) {
         setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
       } else {
         setServiceAreaContext(null);
       }
 
-      // DO NOT auto-populate customer's actual address from GPS or Service Area
       setPincode("");
       setManualAddress("");
       setBookingLatitude(null);
       setBookingLongitude(null);
-      setIsAddressSummaryMode(true); // Default to showing summary mode (which says "Add Address" because it's empty)
+      setIsAddressSummaryMode(true);
       setHasUsedLocationFetch(false);
     } else {
+      // Brand new user scenario
+      setUserId(authData.user.id);
       setIsAddressSummaryMode(false);
     }
     setLoadingProfile(false);
@@ -1004,7 +1025,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const checkPincodeServiceable = useCallback(async (pin: string, addressStr: string = "") => {
     console.log(`[Serviceability] Pincode received: ${pin}, Address: ${addressStr}`);
     const cleanedPin = String(pin || "").trim().slice(0, 6);
-    
+
     checkRequestId.current += 1;
     const currentRequestId = checkRequestId.current;
 
@@ -1017,13 +1038,13 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
     try {
       setCheckingPincode(true);
-      
+
       const { hubName, isActive } = await resolveHubFromLocation(cleanedPin, addressStr);
       if (currentRequestId !== checkRequestId.current) return;
 
       console.log(`[Serviceability] Resolved hub: ${hubName}, Active: ${isActive}`);
       setSelectedHubName(hubName || "");
-      
+
       if (!hubName || !isActive) {
         console.log(`[Serviceability] Final result: NOT_AVAILABLE (No active hub)`);
         setIsPincodeServiceable(false);
@@ -1032,15 +1053,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         setCategoryStaffCount(0);
         return;
       }
-      
+
       setIsPincodeInArea(true);
-      
+
       const staffCount = await fetchHubCategoryStaffCount(hubName, selectedServices);
       if (currentRequestId !== checkRequestId.current) return;
 
       console.log(`[Serviceability] Staff count: ${staffCount} for hub ${hubName}`);
       setCategoryStaffCount(staffCount);
-      
+
       if (staffCount > 0) {
         setIsPincodeServiceable(true);
         setIsHubCapacityAvailable(true);
@@ -1521,12 +1542,12 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     </View>
                   ) : (
                     savedAddresses.map(addr => (
-                      <Pressable 
+                      <Pressable
                         key={addr.id}
-                        style={[styles.summaryCard, { 
-                          backgroundColor: selectedAddressId === addr.id ? (isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4') : theme.surfaceVariant, 
-                          marginBottom: 12, 
-                          borderWidth: 2, 
+                        style={[styles.summaryCard, {
+                          backgroundColor: selectedAddressId === addr.id ? (isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4') : theme.surfaceVariant,
+                          marginBottom: 12,
+                          borderWidth: 2,
                           borderColor: selectedAddressId === addr.id ? theme.primary : 'transparent',
                           borderRadius: 12,
                           padding: 16
@@ -1547,16 +1568,16 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                               </Text>
                             ) : null}
                           </View>
-                          
+
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <Pressable 
+                            <Pressable
                               onPress={(e) => { e.stopPropagation(); openEditAddress(addr); }}
                               style={{ padding: 4 }}
                               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
                               <Ionicons name="create-outline" size={20} color={theme.textLight} />
                             </Pressable>
-                            
+
                             <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: selectedAddressId === addr.id ? theme.primary : theme.border, alignItems: 'center', justifyContent: 'center' }}>
                               {selectedAddressId === addr.id && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />}
                             </View>
@@ -1565,7 +1586,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                       </Pressable>
                     ))
                   )}
-                  
+
                   {savedAddresses.length > 0 && (
                     <Pressable
                       style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12 }}
@@ -1640,7 +1661,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     >
                       <Text style={{ color: theme.text, fontWeight: "600" }}>Cancel</Text>
                     </Pressable>
-                    
+
                     <Pressable
                       style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
                       onPress={handleUpdateAddress}

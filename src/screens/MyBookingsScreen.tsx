@@ -1,24 +1,20 @@
-import { useNavigation } from "@react-navigation/native";
-import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   FlatList,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "../components/Header";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
-import { supabase } from "../lib/supabase";
-import { COLORS } from "../theme/colors";
-import { useFocusEffect } from "@react-navigation/native";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
+import { supabase } from "../lib/supabase";
 
 type TabType = "current" | "completed";
 
@@ -52,10 +48,33 @@ export default function MyBookingsScreen() {
       return;
     }
 
+    // 1. Extract the phone number for the catch-all search
+    const rawPhone = user.phone || user.user_metadata?.phone_number || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
+
+    let targetUserId = user.id; // Default to current auth session ID
+
+    // 2. CATCH-ALL SEARCH: Find the legacy profile ID using the phone number
+    if (cleanPhone) {
+      const { data: phoneData } = await supabase
+        .from("profile")
+        .select("id") // We only need the ID to map the bookings
+        .ilike("phone", `%${cleanPhone}`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // If a legacy profile is found, use ITS ID to look up the bookings
+      if (phoneData && phoneData.id) {
+        targetUserId = phoneData.id;
+      }
+    }
+
+    // 3. Fetch bookings using the correct ID (Legacy if found, otherwise New)
     const { data, error } = await supabase
       .from("bookings")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", targetUserId)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -64,7 +83,7 @@ export default function MyBookingsScreen() {
 
     setLoading(false);
   }, []);
-
+  
   useFocusEffect(
     useCallback(() => {
       fetchMyBookings();
@@ -176,47 +195,47 @@ export default function MyBookingsScreen() {
               renderItem={({ item: b }) => {
                 const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
                 return (
-                <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                  <View style={styles.cardHeader}>
-                    <Text style={[styles.name, { color: theme.text }]}>{b.customer_name}</Text>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        normalizedWorkStatus === "COMPLETED"
-                          ? styles.completed
-                          : normalizedWorkStatus === "CANCELLED"
-                            ? styles.cancelled
-                            : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
-                              ? styles.paymentFailed
-                              : b.assigned_staff_email
-                                ? styles.assigned
-                                : styles.pending,
-                      ]}
-                    >
-                      <Text style={styles.statusText}>
-                        {normalizedWorkStatus === "COMPLETED"
-                          ? t("bookings.status.completed")
-                          : normalizedWorkStatus === "CANCELLED"
-                            ? t("bookings.status.cancelled")
-                            : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
-                              ? "PAYMENT FAILED"
-                              : b.assigned_staff_email
-                                ? t("bookings.status.assigned")
-                                : t("bookings.status.pending")}
-                      </Text>
+                  <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <View style={styles.cardHeader}>
+                      <Text style={[styles.name, { color: theme.text }]}>{b.customer_name}</Text>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          normalizedWorkStatus === "COMPLETED"
+                            ? styles.completed
+                            : normalizedWorkStatus === "CANCELLED"
+                              ? styles.cancelled
+                              : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
+                                ? styles.paymentFailed
+                                : b.assigned_staff_email
+                                  ? styles.assigned
+                                  : styles.pending,
+                        ]}
+                      >
+                        <Text style={styles.statusText}>
+                          {normalizedWorkStatus === "COMPLETED"
+                            ? t("bookings.status.completed")
+                            : normalizedWorkStatus === "CANCELLED"
+                              ? t("bookings.status.cancelled")
+                              : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
+                                ? "PAYMENT FAILED"
+                                : b.assigned_staff_email
+                                  ? t("bookings.status.assigned")
+                                  : t("bookings.status.pending")}
+                        </Text>
+                      </View>
                     </View>
+                    <Text style={[styles.meta, { color: theme.textLight }]}>
+                      {b.booking_date} {t("bookings.at")} {b.booking_time}
+                    </Text>
+                    <Text style={[styles.meta, { color: theme.textLight }]}>{t("bookings.total")}: ₹{b.total_amount}</Text>
+                    <Pressable
+                      style={[styles.viewBtn, { backgroundColor: theme.primary }]}
+                      onPress={() => navigation.navigate("BookingDetails", { booking: b })}
+                    >
+                      <Text style={[styles.viewText, { color: isDark ? theme.background : "#000" }]}>{t("bookings.view")}</Text>
+                    </Pressable>
                   </View>
-                  <Text style={[styles.meta, { color: theme.textLight }]}>
-                    {b.booking_date} {t("bookings.at")} {b.booking_time}
-                  </Text>
-                  <Text style={[styles.meta, { color: theme.textLight }]}>{t("bookings.total")}: ₹{b.total_amount}</Text>
-                  <Pressable
-                    style={[styles.viewBtn, { backgroundColor: theme.primary }]}
-                    onPress={() => navigation.navigate("BookingDetails", { booking: b })}
-                  >
-                    <Text style={[styles.viewText, { color: isDark ? theme.background : "#000" }]}>{t("bookings.view")}</Text>
-                  </Pressable>
-                </View>
                 );
               }}
             />

@@ -2628,7 +2628,7 @@ export default function CheckoutScreen({ route }: Props) {
   }>({ title: '', message: '', type: 'error' });
 
   // Address Form State
-  const [serviceAreaContext, setServiceAreaContext] = useState<{name: string, pincode: string} | null>(null);
+  const [serviceAreaContext, setServiceAreaContext] = useState<{ name: string, pincode: string } | null>(null);
   const [manualAddress, setManualAddress] = useState(route.params?.manualAddress || "");
   const [pincode, setPincode] = useState(route.params?.pincode || "");
 
@@ -2677,10 +2677,10 @@ export default function CheckoutScreen({ route }: Props) {
     if (coupon.discount_amount && coupon.discount_amount > 0) {
       return coupon.discount_amount;
     }
-    
+
     if (coupon.source === "PROMOTIONAL_BANNER") {
       if (!coupon.serviceId) return 0;
-      
+
       const svc = checkoutServices.find(s => s.id === coupon.serviceId);
       if (svc) {
         const qty = svc.quantity || 1;
@@ -2748,7 +2748,7 @@ export default function CheckoutScreen({ route }: Props) {
 
           if (claimed.type === "PROMOTIONAL_BANNER") {
             const { data: { session } } = await supabase.auth.getSession();
-            
+
             // Check auth mismatch
             if (claimed.userId && session?.user?.id && claimed.userId !== session.user.id) {
               console.log("[COUPON STEP 7] PROMOTIONAL_BANNER userId mismatch. Blocking.");
@@ -2783,7 +2783,7 @@ export default function CheckoutScreen({ route }: Props) {
                   }
                 }
               }
-              
+
               const count = isAlreadyUsed ? 1 : 0;
 
               console.log("[COUPON STEP 7] PROMOTIONAL_BANNER redemption check:", {
@@ -3090,25 +3090,49 @@ export default function CheckoutScreen({ route }: Props) {
   /* ================= LOAD PROFILE ================= */
 
   const loadProfile = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) return;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return;
 
-    setUserId(data.user.id);
+    // 1. Extract the phone number for the catch-all search
+    const rawPhone = authData.user.phone || authData.user.user_metadata?.phone_number || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
 
-    const { data: profileData, error } = await supabase
-      .from("profile")
-      .select("full_name,email,phone,address,pincode")
-      .eq("id", data.user.id)
-      .maybeSingle();
+    let profileData = null;
 
-    if (error) {
-      setAlertConfig({ title: 'Error', message: error.message, type: 'error' });
-      setShowAlertModal(true);
-      setLoadingProfile(false);
-      return;
+    // 2. CATCH-ALL SEARCH: Find the profile by phone number first
+    if (cleanPhone) {
+      const { data: phoneData } = await supabase
+        .from("profile")
+        .select("id, full_name, email, phone, address, pincode")
+        .ilike("phone", `%${cleanPhone}`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      profileData = phoneData;
+    }
+
+    // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
+    if (!profileData) {
+      const { data: idData, error } = await supabase
+        .from("profile")
+        .select("id, full_name, email, phone, address, pincode")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+
+      if (error) {
+        setAlertConfig({ title: 'Error', message: error.message, type: 'error' });
+        setShowAlertModal(true);
+        setLoadingProfile(false);
+        return;
+      }
+      profileData = idData;
     }
 
     if (profileData) {
+      // CRITICAL: Lock the Checkout Screen to the Legacy ID
+      setUserId(profileData.id);
+
       // Apply phone formatting
       const cleanedProfile = {
         ...profileData,
@@ -3120,29 +3144,37 @@ export default function CheckoutScreen({ route }: Props) {
         setInvoiceEmail(profileData.email);
       }
 
-      // ✅ Initial coupon fetch moved to useEffect [profile?.phone]
-
       const selectedServiceArea = await LocationService.getSelectedServiceArea();
-      
+
       if (selectedServiceArea && selectedServiceArea.isServiceable) {
         setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
       } else {
         setServiceAreaContext(null);
       }
 
-      // DO NOT auto-populate customer's actual address from GPS or Service Area.
-      // But if it was passed via route params, keep it!
       if (!route.params?.manualAddress) {
         setPincode("");
         setManualAddress("");
         setBookingLatitude(null);
         setBookingLongitude(null);
-        setIsAddressSummaryMode(true); // Default to showing summary mode (which says "Add Address" because it's empty)
+        setIsAddressSummaryMode(true);
         setHasUsedLocationFetch(false);
       } else {
         setIsAddressSummaryMode(true);
         setHasUsedLocationFetch(true);
       }
+
+      // ✅ Fetch Wallet Balance using the LEGACY ID
+      const { data: walletData } = await supabase
+        .from("wallet")
+        .select("balance")
+        .eq("user_id", profileData.id)
+        .maybeSingle();
+
+      if (walletData) {
+        setWalletBalance(walletData.balance || 0);
+      }
+
     } else {
       setAlertConfig({
         title: 'Profile Not Found',
@@ -3153,19 +3185,8 @@ export default function CheckoutScreen({ route }: Props) {
       navigation.navigate("MainTabs", { screen: "ProfileTab" });
     }
 
-    // ✅ Fetch Wallet Balance
-    const { data: walletData } = await supabase
-      .from("wallet")
-      .select("balance")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
-
-    if (walletData) {
-      setWalletBalance(walletData.balance || 0);
-    }
-
     setLoadingProfile(false);
-  }, [navigation]);
+  }, [navigation, route.params]);
 
   useEffect(() => {
     loadProfile();
@@ -3501,7 +3522,8 @@ export default function CheckoutScreen({ route }: Props) {
         if (error) console.log("Failed to auto-save profile", error);
       });
 
-    const [datePart, timePart] = bookingDateText.split(" at ");
+    // Safely handle undefined by providing a fallback string before splitting
+    const [datePart, timePart] = (bookingDateText || "Pending at Pending").split(" at ");
 
     let finalLat = bookingLatitude;
     let finalLng = bookingLongitude;

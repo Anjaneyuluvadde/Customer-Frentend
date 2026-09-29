@@ -6275,7 +6275,7 @@ export default function HomeScreen({ navigation }: any) {
           if (selectedService) {
             // Restore claimedOffer to ensure discount applies even if local storage was cleared
             const claimObject = {
-              type: "PROMOTIONAL_BANNER",
+              type: "PROMOTIONAL_BANNER" as const, // <-- Added "as const" to fix TS error
               bannerId: banner.id,
               serviceId: selectedService.id,
               serviceTitle: selectedService.title,
@@ -6427,7 +6427,7 @@ export default function HomeScreen({ navigation }: any) {
       setSelectedPromoServiceId(null);
 
       console.log("[PROMO] Fetching services for banner:", banner.id);
-      
+
       let svcData = null;
 
       if (banner.service_scope === "selected") {
@@ -6459,7 +6459,7 @@ export default function HomeScreen({ navigation }: any) {
       } else {
         setPromoBannerServices([]);
       }
-      
+
       setLoadingPromoServices(false);
     } catch (e) {
       console.error("Error claiming banner offer:", e);
@@ -6675,16 +6675,35 @@ export default function HomeScreen({ navigation }: any) {
     if (data) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
+        let userId = session?.user?.id;
 
-        // ✅ Fetch banner IDs the user has already CONSUMED.
-        // A banner is consumed only when a booking that used it reaches COMPLETED.
+        // ✅ INJECT LEGACY ID CATCH-ALL LOOKUP HERE
+        if (session?.user) {
+          const rawPhone = session.user.phone || session.user.user_metadata?.phone_number || "";
+          const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
+
+          if (cleanPhone) {
+            const { data: legacyProfile } = await supabase
+              .from("profile")
+              .select("id")
+              .ilike("phone", `%${cleanPhone}`)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (legacyProfile && legacyProfile.id) {
+              userId = legacyProfile.id; // Override OTP ID with Legacy ID
+            }
+          }
+        }
+
+        // ✅ Fetch banner IDs the user has already CONSUMED using the Legacy ID.
         const consumedBannerIds = new Set<string>();
         if (userId) {
           const { data: usedRows, error: usedError } = await supabase
             .from("bookings")
             .select("promotional_banner_id, work_status")
-            .eq("user_id", userId)
+            .eq("user_id", userId) // <-- Now correctly searches legacy history!
             .not("promotional_banner_id", "is", null);
 
           console.log("[Banner] raw used rows:", usedRows, "err:", usedError);
@@ -6699,6 +6718,7 @@ export default function HomeScreen({ navigation }: any) {
           }
         }
 
+        // ... (Keep the rest of your location checks and banner filtering exactly the same)
         console.log("[Banner] consumedBannerIds:", Array.from(consumedBannerIds));
 
         let customerPincode: string | null = null;

@@ -2578,7 +2578,6 @@
 
 
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   DarkTheme,
   DefaultTheme,
@@ -2597,7 +2596,6 @@ import {
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import * as Notifications from "expo-notifications";
-// import RNRestart from "react-native-restart";
 import { BookingCartProvider } from "./src/context/BookingCartContext";
 import { LanguageProvider } from "./src/context/LanguageContext";
 import { NotificationProvider } from "./src/context/NotificationContext";
@@ -2620,19 +2618,8 @@ export default function App() {
   const [showGoogleLoadingPopup, setShowGoogleLoadingPopup] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
-
   const navigationRef = React.useRef<any>(null);
-
   const skipAuthRedirect = React.useRef(false);
-
-  // ------------------------------------------------------------
-  // GOOGLE AUTH CONTROL
-  // ------------------------------------------------------------
-  // This becomes true only during the Google callback flow.
-  //
-  // We use this to prevent SIGNED_IN from immediately starting
-  // the profile request while the Google session is being created.
-  // ------------------------------------------------------------
   const googleAuthInProgress = React.useRef(false);
 
   // ------------------------------------------------------------
@@ -2642,7 +2629,6 @@ export default function App() {
   const handlePushToken = async (userId: string) => {
     try {
       const token = await registerForPushNotificationsAsync();
-
       if (token) {
         await savePushTokenToSupabase(userId, token);
       }
@@ -2668,13 +2654,11 @@ export default function App() {
   }, [showGoogleLoadingPopup]);
 
   useEffect(() => {
-    // Prevent repeated SIGNED_IN handling.
     let hasCheckedOnce = false;
 
     // ----------------------------------------------------------
     // TIMEOUT HELPER
     // ----------------------------------------------------------
-
     const withTimeout = <T,>(
       promise: PromiseLike<T>,
       ms: number,
@@ -2695,7 +2679,6 @@ export default function App() {
     // ----------------------------------------------------------
     // CHECK PROFILE COMPLETENESS
     // ----------------------------------------------------------
-
     const checkCompleteness = async (
       userId: string,
       useNav = true,
@@ -2704,17 +2687,10 @@ export default function App() {
 
       if (!userId) {
         console.log("[AUTH DEBUG] No userId, returning true");
-
         return true;
       }
 
       try {
-        // ------------------------------------------------------
-        // IMPORTANT:
-        // We still use getUser for normal app/profile checks.
-        // But it has an 8 second protection.
-        // ------------------------------------------------------
-
         console.log("[AUTH DEBUG] supabase.auth.getUser() START");
 
         const {
@@ -2726,35 +2702,17 @@ export default function App() {
           "supabase.auth.getUser",
         );
 
-        console.log("[AUTH DEBUG] supabase.auth.getUser() RESULT", {
-          hasUser: !!user,
-          hasError: !!userError,
-        });
-
         if (userError || !user) {
           if (
             userError?.message?.includes("Refresh Token") ||
             userError?.status === 401
           ) {
-            console.log("[AUTH DEBUG] Session invalid, signing out START");
-
             await supabase.auth.signOut();
-
-            console.log("[AUTH DEBUG] Session invalid, signing out RESULT");
           }
-
-          console.log("[AUTH DEBUG] Returning true due to userError/no user");
-
           return true;
         }
 
-        // ------------------------------------------------------
-        // PROFILE QUERY
-        // ------------------------------------------------------
-
         console.log("[AUTH DEBUG] profile query START");
-
-        console.log("[App Startup] Fetching user profile");
 
         const { data: profile } = await withTimeout<any>(
           supabase
@@ -2766,27 +2724,14 @@ export default function App() {
           "profile query",
         );
 
-        console.log("[AUTH DEBUG] profile query RESULT", profile);
-
-        console.log("[App Startup] User profile fetched successfully");
-
-        // ------------------------------------------------------
-        // PROFILE COMPLETE
-        // ------------------------------------------------------
-
         if (
           profile &&
           profile.full_name &&
           profile.full_name.trim().length > 0
         ) {
           console.log("[AUTH DEBUG] Profile complete, returning true");
-
           return true;
         }
-
-        // ------------------------------------------------------
-        // PROFILE INCOMPLETE
-        // ------------------------------------------------------
 
         if (useNav) {
           const rawPhone =
@@ -2796,6 +2741,8 @@ export default function App() {
             "";
 
           const digits = rawPhone.replace(/\D/g, "").slice(-10);
+          // NEW FIX: Pass standard format to Complete Profile
+          const finalFormattedPhone = digits ? `+91${digits}` : "";
 
           console.log(
             "[AUTH DEBUG] Incomplete profile detected! Navigating to CompleteProfile screen...",
@@ -2808,7 +2755,7 @@ export default function App() {
                 name: "CompleteProfile",
                 params: {
                   initialData: {
-                    phone: digits,
+                    phone: finalFormattedPhone,
                   },
                 },
               },
@@ -2816,13 +2763,9 @@ export default function App() {
           });
         }
 
-        console.log("[AUTH DEBUG] checkCompleteness END returning false");
-
         return false;
       } catch (err) {
         console.error("[AUTH DEBUG] checkCompleteness catch error:", err);
-
-        // Returning true preserves the existing behavior.
         return true;
       }
     };
@@ -2830,80 +2773,34 @@ export default function App() {
     // ----------------------------------------------------------
     // INITIAL APP LAUNCH
     // ----------------------------------------------------------
-
     const initApp = async () => {
       try {
-        console.log("[App Startup] Initializing auth");
-
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
-
-        // ------------------------------------------------------
-        // SESSION ERROR
-        // ------------------------------------------------------
 
         if (sessionError) {
           if (
             sessionError.message?.includes("Refresh Token") ||
             sessionError.status === 400
           ) {
-            console.warn("Broken session detected on init. Clearing...");
-
             await supabase.auth.signOut();
-
             setInitialRoute("LocationAccess");
             setLoading(false);
-
             return;
           }
-
           throw sessionError;
         }
 
-        // ------------------------------------------------------
-        // EXISTING SESSION
-        // ------------------------------------------------------
-
         if (session?.user) {
-          console.log("[App Startup] Existing Supabase session found");
-
-          console.log(`[App Startup] User ID: ${session.user.id}`);
-
-          // ----------------------------------------------------
-          // IMPORTANT:
-          // If this app was restarted because of the Google
-          // authentication watchdog, clear the flag NOW.
-          //
-          // This prevents another restart loop.
-          // ----------------------------------------------------
-
-          // const googleRestartFlag = await AsyncStorage.getItem(
-          //   "google_auth_restarted",
-          // );
-
-          // if (googleRestartFlag === "true") {
-          //   console.log("[Google Auth] Restart recovery detected");
-
-          //   console.log("[Google Auth] Clearing restart flag");
-
-          //   await AsyncStorage.removeItem("google_auth_restarted");
-          // }
-
           handlePushToken(session.user.id);
-
           hasCheckedOnce = true;
         }
-
-        // ------------------------------------------------------
-        // INITIAL ROUTE
-        // ------------------------------------------------------
 
         setInitialRoute("LocationAccess");
       } catch (err) {
         console.error("App init failed:", err);
-
         setInitialRoute("LocationAccess");
       } finally {
         setLoading(false);
@@ -2915,7 +2812,6 @@ export default function App() {
     // ----------------------------------------------------------
     // AUTH STATE LISTENER
     // ----------------------------------------------------------
-
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log(
@@ -2925,105 +2821,30 @@ export default function App() {
           session?.user?.id,
         );
 
-        // ------------------------------------------------------
-        // SIGNED OUT
-        // ------------------------------------------------------
-
         if (event === "SIGNED_OUT") {
           skipAuthRedirect.current = false;
-
           hasCheckedOnce = false;
-
           googleAuthInProgress.current = false;
-
-          console.log("[AUTH] User signed out");
-
           return;
         }
-
-        // ------------------------------------------------------
-        // PASSWORD RESET
-        // ------------------------------------------------------
 
         if (skipAuthRedirect.current && event === "SIGNED_IN") {
-          console.log("Skipping auth redirect (password reset in progress)");
-
           return;
         }
-
-        // ------------------------------------------------------
-        // SIGNED IN
-        // ------------------------------------------------------
 
         if (event === "SIGNED_IN" && session?.user && !hasCheckedOnce) {
           hasCheckedOnce = true;
-
           const userId = session.user.id;
-
-          console.log("[AUTH] SIGNED_IN user:", userId);
-
           handlePushToken(userId);
-
-
-          // ----------------------------------------------------
-          // IMPORTANT GOOGLE FIX
-          // ----------------------------------------------------
-          //
-          // During Google callback:
-          //
-          // setSession()
-          //      ↓
-          // SIGNED_IN
-          //      ↓
-          // profile query
-          //
-          // The profile query is what your ADB shows getting
-          // stuck.
-          //
-          // Therefore DO NOT start checkCompleteness here
-          // during Google authentication.
-          //
-          // The Google deep-link flow has its own watchdog.
-          // ----------------------------------------------------
 
           if (googleAuthInProgress.current) {
             console.log("[AUTH] Google SIGNED_IN detected");
-
-            console.log(
-              "[AUTH] Skipping immediate profile check for Google login",
-            );
-
             return;
           }
 
-          // ----------------------------------------------------
-          // NORMAL EMAIL/PASSWORD LOGIN
-          // ----------------------------------------------------
-
-          setTimeout(async () => {
-            console.log(
-              "🌐 [App Debug] Checking profile completeness for SIGNED_IN user...",
-            );
-
-            const isComplete = await checkCompleteness(userId, true);
-
-            if (isComplete) {
-              console.log(
-                "🌐 [App Debug] Profile complete -> Navigating to HomeDrawer",
-              );
-
-              console.log("[App Startup] Navigating to Home/Profile");
-
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [
-                  {
-                    name: "HomeDrawer",
-                  },
-                ],
-              });
-            }
-          }, 300);
+          // NEW FIX: Removed old redundant setTimeout routing. 
+          // LoginScreen natively handles it now.
+          console.log("🌐 [App Debug] Standard login detected. Navigation is handled natively by LoginScreen.");
         }
       },
     );
@@ -3031,196 +2852,43 @@ export default function App() {
     // ----------------------------------------------------------
     // DEEP LINK HANDLER
     // ----------------------------------------------------------
-
     const handleDeepLink = async ({ url }: { url: string }) => {
-      if (!url) {
-        return;
-      }
-
-      console.log("[Deep Link] Authentication/deep link received");
-
-      console.log("Deep link received:", url);
-
-      // ========================================================
-      // GOOGLE AUTH
-      // ========================================================
+      if (!url) return;
 
       if (url.includes("google-auth")) {
         const fragment = url.split("#")[1];
-
-        if (!fragment) {
-          console.log("[Google Auth] No URL fragment found");
-
-          return;
-        }
+        if (!fragment) return;
 
         const params = new URLSearchParams(fragment);
-
         const accessToken = params.get("access_token");
-
         const refreshToken = params.get("refresh_token");
 
-        if (!accessToken || !refreshToken) {
-          console.log("[Google Auth] Access or refresh token missing");
-
-          return;
-        }
-
-        console.log("[Google Auth] Google callback received");
-
-        // ------------------------------------------------------
-        // Tell SIGNED_IN listener this is Google authentication.
-        // IMPORTANT: Set BEFORE setSession().
-        // ------------------------------------------------------
+        if (!accessToken || !refreshToken) return;
 
         googleAuthInProgress.current = true;
-
         hasCheckedOnce = false;
-
-        // ------------------------------------------------------
-        // Check restart flag
-        // ------------------------------------------------------
-
-        // const hasRestarted = await AsyncStorage.getItem(
-        //   "google_auth_restarted",
-        // );
-
-        // ======================================================
-        // SECOND START / RECOVERY
-        // ======================================================
-
-        // if (hasRestarted === "true") {
-        //   console.log("[Google Auth] Restart recovery flow detected");
-
-        //   // Clear flag so future Google logins work normally.
-        //   await AsyncStorage.removeItem("google_auth_restarted");
-
-        //   try {
-        //     console.log("[Google Auth] Restoring Supabase session");
-
-        //     const { data, error } = await supabase.auth.setSession({
-        //       access_token: accessToken,
-        //       refresh_token: refreshToken,
-        //     });
-
-        //     if (error) {
-        //       console.error(
-        //         "[Google Auth] Session restore error:",
-        //         error.message,
-        //       );
-
-        //       googleAuthInProgress.current = false;
-
-        //       return;
-        //     }
-
-        //     if (data?.session?.user) {
-        //       console.log("[Google Auth] Session restored successfully");
-
-        //       console.log("[Google Auth] User ID:", data.session.user.id);
-        //     }
-        //   } catch (err) {
-        //     console.error("[Google Auth] Session restore exception:", err);
-        //   } finally {
-        //     googleAuthInProgress.current = false;
-        //   }
-
-        //   return;
-        // }
-
-        // ======================================================
-        // FIRST GOOGLE LOGIN
-        // ======================================================
-
-        console.log("[Google Auth] First Google login detected");
-
         setShowGoogleLoadingPopup(true);
 
-        // ------------------------------------------------------
-        // IMPORTANT:
-        // Set restart flag BEFORE setSession().
-        //
-        // If setSession/profile gets stuck, the watchdog will
-        // restart the app.
-        // ------------------------------------------------------
-
-        // await AsyncStorage.setItem("google_auth_restarted", "true");
-
-        // console.log("[Google Auth] Restart flag saved");
-
-        // ------------------------------------------------------
-        // START WATCHDOG BEFORE setSession()
-        // ------------------------------------------------------
-
-        // console.log("[Google Auth] Starting 3-second restart watchdog");
-
-        // const restartTimer = setTimeout(() => {
-        //   try {
-        //     console.log(
-        //       "[Google Auth] Authentication/profile flow appears stuck",
-        //     );
-
-        //     console.log("[Google Auth] Automatically restarting app...");
-
-        //     RNRestart.restart();
-        //   } catch (err) {
-        //     console.error("[Google Auth] Failed to restart app:", err);
-        //   }
-        // }, 3000);
-
-        // ------------------------------------------------------
-        // CREATE SUPABASE SESSION
-        // ------------------------------------------------------
-
         try {
-          console.log("[Google Auth] Starting Supabase session creation");
-
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
 
-          // ----------------------------------------------------
-          // IMPORTANT:
-          //
-          // If setSession completes successfully, cancel the
-          // watchdog.
-          //
-          // However, the Google SIGNED_IN listener will NOT
-          // start the profile request because
-          // googleAuthInProgress.current is true.
-          // ----------------------------------------------------
-
-          // clearTimeout(restartTimer);
-
           if (error) {
-            console.error("[Google Auth] setSession error:", error.message);
-
-            await AsyncStorage.removeItem("google_auth_restarted");
-
             googleAuthInProgress.current = false;
-
             return;
           }
 
           if (data?.session?.user) {
-            console.log("[Google Auth] Supabase session created successfully");
-
-            console.log("[Google Auth] User ID:", data.session.user.id);
-
-            // ==========================================
-            // CREATE PROFILE ROW
-            // ==========================================
-
             const user = data.session.user;
-
             const fullName =
               user.user_metadata?.full_name ||
               user.user_metadata?.name ||
               user.email?.split("@")[0] ||
               "Customer";
 
-            const { error: profileError } = await supabase
+            await supabase
               .from("profile")
               .upsert({
                 id: user.id,
@@ -3231,79 +2899,41 @@ export default function App() {
                 pincode: null,
               });
 
-            if (profileError) {
-              console.error(
-                "[Google Auth] Profile creation error:",
-                profileError.message
-              );
-            } else {
-              console.log("[Google Auth] Profile row created");
-            }
-
-            // 1. CLEAR THE LOADING MODAL
             setShowGoogleLoadingPopup(false);
 
-            // 2. MANUALLY RUN PROFILE CHECK AND NAVIGATE
-            console.log("[Google Auth] Checking completeness & navigating...");
             const isComplete = await checkCompleteness(user.id, true);
 
             if (isComplete) {
               navigationRef.current?.reset({
                 index: 0,
-                routes: [
-                  {
-                    name: "HomeDrawer",
-                  },
-                ],
+                routes: [{ name: "HomeDrawer" }],
               });
             }
 
-            // 3. CLEAN UP FLAG IMMEDIATELY
             googleAuthInProgress.current = false;
-
           } else {
             googleAuthInProgress.current = false;
             setShowGoogleLoadingPopup(false);
           }
-
         } catch (err) {
-          // clearTimeout(restartTimer);
-          console.error("[Google Auth] setSession exception:", err);
           googleAuthInProgress.current = false;
           setShowGoogleLoadingPopup(false);
         }
-
         return;
       }
 
-      // ========================================================
-      // PASSWORD RESET
-      // ========================================================
-
       if (url.includes("reset-password") || url.includes("type=recovery")) {
-        // Prevent auth listener from navigating to Home.
         skipAuthRedirect.current = true;
-
-        // Supabase tokens can be in the fragment (#)
-        // or query (?).
         const searchPart = url.includes("#")
           ? url.split("#")[1]
           : url.split("?")[1];
 
         if (searchPart) {
           const params = new URLSearchParams(searchPart);
-
           const accessToken = params.get("access_token");
-
           const refreshToken = params.get("refresh_token");
 
           if (accessToken && refreshToken) {
-            console.log(
-              "✅ Reset tokens detected. Navigating to ResetPassword...",
-            );
-
-            // Small delay to ensure NavigationContainer
-            // is ready.
             setTimeout(() => {
               navigationRef.current?.reset({
                 index: 0,
@@ -3323,32 +2953,17 @@ export default function App() {
       }
     };
 
-    // ----------------------------------------------------------
-    // INITIAL URL / COLD START
-    // ----------------------------------------------------------
-
     Linking.getInitialURL().then((url) => {
       if (url) {
-        handleDeepLink({
-          url,
-        });
+        handleDeepLink({ url });
       }
     });
 
-    // ----------------------------------------------------------
-    // URL EVENT LISTENER
-    // ----------------------------------------------------------
-
     const subscription = Linking.addEventListener("url", handleDeepLink);
-
-    // ----------------------------------------------------------
-    // NOTIFICATION TAP
-    // ----------------------------------------------------------
 
     const notificationResponseSubscription =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data;
-
         if (data?.screen === "bookings") {
           navigationRef.current?.navigate("HomeDrawer", {
             screen: "AuthenticatedScreens",
@@ -3362,22 +2977,12 @@ export default function App() {
         }
       });
 
-    // ----------------------------------------------------------
-    // CLEANUP
-    // ----------------------------------------------------------
-
     return () => {
       listener.subscription.unsubscribe();
-
       subscription.remove();
-
       notificationResponseSubscription.remove();
     };
   }, []);
-
-  // ============================================================
-  // REACT NAVIGATION DEEP LINK CONFIG
-  // ============================================================
 
   const linking: any = {
     prefixes: [
@@ -3387,7 +2992,6 @@ export default function App() {
       "https://www.theneatifyteam.in",
       "https://theneatifyteam.in",
     ],
-
     config: {
       screens: {
         HomeDrawer: {
@@ -3399,7 +3003,6 @@ export default function App() {
                     HomeTab: {
                       screens: {
                         ServiceDetail: "service/:serviceId",
-
                         HomeMain: "*",
                       },
                     },
@@ -3411,62 +3014,23 @@ export default function App() {
         },
       },
     },
-
-    // ----------------------------------------------------------
-    // Handle unmatched URLs gracefully
-    // ----------------------------------------------------------
-
     async getInitialURL() {
       const url = await Linking.getInitialURL();
-
-      if (url) {
-        console.log("Deep link opened app:", url);
-
-        console.log(
-          "Parsing serviceId from URL:",
-          url.match(/service\/([^/?]+)/)?.[1],
-        );
-      }
-
       return url;
     },
-
-    // ----------------------------------------------------------
-    // React Navigation URL subscription
-    // ----------------------------------------------------------
-
     subscribe(listener: (url: string) => void) {
       const linkingSubscription = Linking.addEventListener("url", ({ url }) => {
-        console.log("Deep link received:", url);
-
-        const serviceIdMatch = url.match(/service\/([^/?]+)/);
-
-        if (serviceIdMatch) {
-          console.log("Extracted serviceId:", serviceIdMatch[1]);
-        } else {
-          console.log("Deep link: No serviceId found, will navigate to Home");
-        }
-
         listener(url);
       });
-
       return () => {
         linkingSubscription.remove();
       };
     },
   };
 
-  // ============================================================
-  // LOADING
-  // ============================================================
-
   if (loading) {
     return null;
   }
-
-  // ============================================================
-  // APP
-  // ============================================================
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -3546,27 +3110,17 @@ export default function App() {
   );
 }
 
-// ============================================================
-// THEMED APP CONTENT
-// ============================================================
-
 function ThemedAppContent({ linking, navigationRef, initialRoute }: any) {
   const { theme, isDark } = useTheme();
 
   const navTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
-
     colors: {
       ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
-
       background: theme.background,
-
       card: theme.background,
-
       text: theme.text,
-
       border: theme.border,
-
       notification: theme.primary,
     },
   };
@@ -3577,7 +3131,6 @@ function ThemedAppContent({ linking, navigationRef, initialRoute }: any) {
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={theme.background}
       />
-
       <NavigationContainer
         linking={linking}
         ref={navigationRef}
@@ -3588,8 +3141,6 @@ function ThemedAppContent({ linking, navigationRef, initialRoute }: any) {
     </>
   );
 }
-
-// Force rebuild 2
 
 const styles = StyleSheet.create({
   container: {

@@ -955,6 +955,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Scroll
 import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+
 import { useTheme } from '../context/ThemeContext';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { supabase } from '../lib/supabase';
@@ -997,22 +998,48 @@ export default function LocationSearchScreen() {
   const [addressTag, setAddressTag] = useState<"Home" | "Work" | "Other">("Home");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+
   useEffect(() => {
     handleUseCurrentLocation();
 
-    // 2. Fetch all addresses from the new table instead of just the profile
-    const fetchAllAddresses = async () => {
+    const fetchUserAndAddresses = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data } = await supabase
-          .from('user_addresses')
-          .select('*')
-          .eq('user_id', session.user.id);
+      if (!session?.user) return;
 
-        if (data) setSavedAddresses(data);
+      // 1. Resolve Legacy ID via Phone
+      const rawPhone = session.user.phone || session.user.user_metadata?.phone_number || "";
+      const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
+
+      let resolvedId = session.user.id;
+
+      if (cleanPhone) {
+        const { data: phoneData } = await supabase
+          .from("profile")
+          .select("id")
+          .ilike("phone", `%${cleanPhone}`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (phoneData && phoneData.id) {
+          resolvedId = phoneData.id;
+        }
       }
+
+      // Store the resolved ID so we can use it to save new addresses later
+      setTargetUserId(resolvedId);
+
+      // 2. Fetch addresses using the legacy resolved ID
+      const { data } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', resolvedId);
+
+      if (data) setSavedAddresses(data);
     };
-    fetchAllAddresses();
+
+    fetchUserAndAddresses();
   }, []);
 
   // --- 1. SEARCH BAR LOGIC ---
@@ -1157,42 +1184,43 @@ export default function LocationSearchScreen() {
       Alert.alert("Required", "Please enter your House / Flat / Block No.");
       return;
     }
+    if (!targetUserId) {
+      Alert.alert("Error", "User identification missing. Please log in again.");
+      return;
+    }
 
     setIsSavingProfile(true);
     try {
-      const prefix = `${addressTag}: ${houseNo.trim()}`;
+      // Removed the address tag prefix so it only saves the pure address
+      const prefix = houseNo.trim();
       const mid = landmark.trim() ? `, ${landmark.trim()}` : "";
       const finalFullAddress = `${prefix}${mid}, ${currentAddress}`;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      // 1. Delete ANY existing addresses with this tag for the LEGACY user
+      await supabase
+        .from('user_addresses')
+        .delete()
+        .eq('user_id', targetUserId)
+        .eq('tag', addressTag);
 
-        // 1. Delete ANY existing addresses with this tag (Cleans up all old duplicates!)
+      // 2. Insert the fresh, updated address under the LEGACY user
+      await supabase.from('user_addresses').insert({
+        user_id: targetUserId,
+        tag: addressTag,
+        house_no: houseNo.trim(),
+        landmark: landmark.trim(),
+        full_address: finalFullAddress,
+        latitude: region.latitude,
+        longitude: region.longitude,
+        pincode: currentPincode
+      });
+
+      // 3. ONLY if it is Home, also update the master profile table
+      if (addressTag === "Home") {
         await supabase
-          .from('user_addresses')
-          .delete()
-          .eq('user_id', session.user.id)
-          .eq('tag', addressTag);
-
-        // 2. Insert the fresh, updated address
-        await supabase.from('user_addresses').insert({
-          user_id: session.user.id,
-          tag: addressTag,
-          house_no: houseNo.trim(),
-          landmark: landmark.trim(),
-          full_address: finalFullAddress,
-          latitude: region.latitude,
-          longitude: region.longitude,
-          pincode: currentPincode
-        });
-
-        // 3. ONLY if it is Home, also update the master profile table
-        if (addressTag === "Home") {
-          await supabase
-            .from('profile')
-            .update({ address: finalFullAddress })
-            .eq('id', session.user.id);
-        }
+          .from('profile')
+          .update({ address: finalFullAddress })
+          .eq('id', targetUserId);
       }
 
       const locality = currentRawAddress ? LocationService.getLocalityString(currentRawAddress) : "Selected Location";
@@ -1217,7 +1245,6 @@ export default function LocationSearchScreen() {
       setIsSavingProfile(false);
     }
   };
-
   const handleUseCurrentLocation = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -1279,7 +1306,7 @@ export default function LocationSearchScreen() {
           {/* Quick Action Chips (Saved Addresses) */}
           {searchResults.length === 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginLeft: 60 }}>
-              
+
               {/* Dynamically render a chip for every saved address */}
               {savedAddresses.map((addr, index) => (
                 <TouchableOpacity
