@@ -437,6 +437,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   );
 
   const handleSelectAddress = (address: any) => {
+    if (!validateUserDetails()) return;
     setSelectedAddressId(address.id);
     const full = address.full_address || "";
     const match = full.match(/\b\d{6}\b/);
@@ -661,8 +662,25 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     }, [])
   );
 
+  // --- NEW VALIDATION FUNCTION ---
+  const validateUserDetails = () => {
+    const isPhoneValid = profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
+
+    if (!profile?.full_name?.trim() || !isPhoneValid) {
+      setAlertConfig({
+        title: "Required Fields",
+        message: "Please enter your Name and a valid 10-digit Phone Number before selecting an address.",
+        type: "warning"
+      });
+      setShowAlertModal(true);
+      return false;
+    }
+    return true;
+  };
+
   // Fetch Current Location
   const fetchCurrentLocation = async () => {
+    if (!validateUserDetails()) return;
     if (!userId) return;
 
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -1479,9 +1497,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         <Text style={[styles.sectionHeading, { color: theme.text, marginTop: 24, marginBottom: 12 }]}>{t("checkout.serviceAddress")}</Text>
 
         <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+
           {/* User Details */}
           <View style={{ marginBottom: 12 }}>
-            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.name")}</Text>
+            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.name")} *</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
               value={profile?.full_name || ""}
@@ -1492,7 +1511,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               }
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.phone")}</Text>
+            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.phone")} *</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
               value={profile?.phone || ""}
@@ -1506,7 +1525,6 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               placeholderTextColor={theme.textLight}
             />
           </View>
-
           {/* Address Inputs */}
           <View style={{ marginTop: 8 }}>
             <View style={[styles.addressSection, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 0, padding: 0 }]}>
@@ -1534,7 +1552,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                       <Text style={{ color: theme.textLight, fontSize: 14, marginBottom: 16 }}>Add your service address to continue.</Text>
                       <Pressable
                         style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: theme.primary }}
-                        onPress={() => navigation.navigate("LocationSearch")}
+                        onPress={() => {
+                          if (validateUserDetails()) navigation.navigate("LocationSearch");
+                        }}
                       >
                         <Ionicons name="add" size={20} color={theme.primary} />
                         <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>Add New Address</Text>
@@ -1590,7 +1610,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   {savedAddresses.length > 0 && (
                     <Pressable
                       style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12 }}
-                      onPress={() => navigation.navigate("LocationSearch")}
+                      onPress={() => {
+                        if (validateUserDetails()) navigation.navigate("LocationSearch");
+                      }}
                     >
                       <Ionicons name="add" size={20} color={theme.primary} />
                       <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 15 }}>Add New Address</Text>
