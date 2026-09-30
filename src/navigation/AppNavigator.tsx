@@ -651,6 +651,7 @@ export type RootStackParamList = {
   ComingSoon: undefined;
   Login: undefined;
   CompleteProfile: any;
+  LocationSearchScreen: undefined;
   HomeDrawer: {
     screen?: string;
     params?: any;
@@ -866,6 +867,7 @@ export default function AppNavigator({ initialRouteName }: AppNavigatorProps) {
       <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen as any} />
+      <Stack.Screen name="LocationSearchScreen" component={LocationSearchScreen as any} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen as any} />
       <Stack.Screen name="HomeDrawer" component={HomeDrawer} />
     </Stack.Navigator>

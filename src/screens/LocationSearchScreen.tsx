@@ -955,7 +955,6 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Scroll
 import MapView, { Region } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-
 import { useTheme } from '../context/ThemeContext';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { supabase } from '../lib/supabase';
@@ -988,10 +987,9 @@ export default function LocationSearchScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  // 1. Changed to an array to hold all addresses (Home, Work, Other)
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
-  // Address Details Modal State (Kept exactly as it was)
+  // Address Details Modal State
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [houseNo, setHouseNo] = useState("");
   const [landmark, setLandmark] = useState("");
@@ -1007,7 +1005,6 @@ export default function LocationSearchScreen() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // 1. Resolve Legacy ID via Phone
       const rawPhone = session.user.phone || session.user.user_metadata?.phone_number || "";
       const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
 
@@ -1027,10 +1024,8 @@ export default function LocationSearchScreen() {
         }
       }
 
-      // Store the resolved ID so we can use it to save new addresses later
       setTargetUserId(resolvedId);
 
-      // 2. Fetch addresses using the legacy resolved ID
       const { data } = await supabase
         .from('user_addresses')
         .select('*')
@@ -1042,7 +1037,6 @@ export default function LocationSearchScreen() {
     fetchUserAndAddresses();
   }, []);
 
-  // --- 1. SEARCH BAR LOGIC ---
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -1093,13 +1087,6 @@ export default function LocationSearchScreen() {
     }, 1000);
   };
 
-  // --- 2. QUICK CHIP HANDLERS ---
-  const handleAddAddress = async () => {
-    const isAuth = await checkAuth("add your address");
-    if (!isAuth) return;
-    navigation.navigate("MainTabs", { screen: "ProfileTab" } as any);
-  };
-
   const handleSelectSavedAddress = async (addressString: string) => {
     try {
       const results = await Location.geocodeAsync(addressString);
@@ -1118,7 +1105,6 @@ export default function LocationSearchScreen() {
     }
   };
 
-  // --- 3. MAP DRAG LOGIC ---
   const onRegionChangeComplete = async (newRegion: Region) => {
     setIsMapMoving(false);
     setRegion(newRegion);
@@ -1133,7 +1119,9 @@ export default function LocationSearchScreen() {
       if (addressArray.length > 0) {
         const addr = addressArray[0];
         const locality = LocationService.getLocalityString(addr);
-        const fullAddress = [addr.name, addr.street, locality, addr.region, addr.country].filter(Boolean).join(", ");
+
+        // ---> CHANGE HERE: Added addr.postalCode so it shows up in the UI <---
+        const fullAddress = [addr.name, addr.street, locality, addr.region, addr.country, addr.postalCode].filter(Boolean).join(", ");
 
         setCurrentAddress(fullAddress);
         setCurrentPincode(addr.postalCode || null);
@@ -1146,7 +1134,6 @@ export default function LocationSearchScreen() {
     }
   };
 
-  // --- 4. CONFIRM BUTTON LOGIC ---
   const handleConfirmLocation = async () => {
     setIsConfirming(true);
     try {
@@ -1178,7 +1165,6 @@ export default function LocationSearchScreen() {
     }
   };
 
-  // --- 5. SAVE FINAL ADDRESS & PROFILE ---
   const handleSaveFinalAddress = async () => {
     if (!houseNo.trim()) {
       Alert.alert("Required", "Please enter your House / Flat / Block No.");
@@ -1191,9 +1177,10 @@ export default function LocationSearchScreen() {
 
     setIsSavingProfile(true);
     try {
-      // Removed the address tag prefix so it only saves the pure address
       const prefix = houseNo.trim();
       const mid = landmark.trim() ? `, ${landmark.trim()}` : "";
+
+      // Because currentAddress now has the pincode, finalFullAddress will also have it at the end!
       const finalFullAddress = `${prefix}${mid}, ${currentAddress}`;
 
       // 1. Delete ANY existing addresses with this tag for the LEGACY user
@@ -1219,7 +1206,10 @@ export default function LocationSearchScreen() {
       if (addressTag === "Home") {
         await supabase
           .from('profile')
-          .update({ address: finalFullAddress })
+          .update({
+            address: finalFullAddress,
+            pincode: currentPincode // ---> CHANGE HERE: Saves the pincode properly to the profile table <---
+          })
           .eq('id', targetUserId);
       }
 
@@ -1245,6 +1235,7 @@ export default function LocationSearchScreen() {
       setIsSavingProfile(false);
     }
   };
+
   const handleUseCurrentLocation = async () => {
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -1306,8 +1297,6 @@ export default function LocationSearchScreen() {
           {/* Quick Action Chips (Saved Addresses) */}
           {searchResults.length === 0 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginLeft: 60 }}>
-
-              {/* Dynamically render a chip for every saved address */}
               {savedAddresses.map((addr, index) => (
                 <TouchableOpacity
                   key={index}
@@ -1421,7 +1410,6 @@ export default function LocationSearchScreen() {
                     ))}
                   </View>
 
-                  {/* THIS IS THE BUTTON YOU WILL CLICK TO FINALLY SAVE IT! */}
                   <TouchableOpacity
                     style={styles.saveBtn}
                     onPress={handleSaveFinalAddress}
