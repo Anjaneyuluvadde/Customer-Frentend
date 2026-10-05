@@ -1428,6 +1428,7 @@ export default function BookingDetailsScreen({ route }: Props) {
     is_free: boolean;
     hours_until_service: number;
     total_amount?: number;
+    paid_amount?: number;
   } | null>(null);
   const [fetchingFees, setFetchingFees] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -1564,16 +1565,38 @@ export default function BookingDetailsScreen({ route }: Props) {
   }, [booking.id]);
 
   const toggleChecklistItem = async (index: number) => {
+    if (Number(booking?.remaining_amount || 0) > 0) {
+      showAlert({
+        type: "warning",
+        title: "Payment Required",
+        message: "Please pay the remaining amount before starting the checklist."
+      });
+      return;
+    }
+
     try {
-      const updated = { ...checklist, [index]: !checklist[index] };
-      setChecklist(updated);
-      await AsyncStorage.setItem(`booking_checklist_${booking.id}`, JSON.stringify(updated));
+      setChecklist((prev) => {
+        const updated = { ...prev, [index]: !prev[index] };
+        AsyncStorage.setItem(`booking_checklist_${booking.id}`, JSON.stringify(updated)).catch((e) => {
+          console.warn("Failed to save checklist", e);
+        });
+        return updated;
+      });
     } catch (e) {
-      console.warn("Failed to save checklist", e);
+      console.warn("Failed to toggle checklist item", e);
     }
   };
 
   const handleCustomerSubmit = async () => {
+    if (Number(booking?.remaining_amount || 0) > 0) {
+      showAlert({
+        type: "warning",
+        title: "Payment Required",
+        message: "Please pay the remaining amount before submitting the checklist."
+      });
+      return;
+    }
+
     try {
       const bookingId = booking?.id;
       const tasks = checklistItems.map((title, index) => ({
@@ -1869,19 +1892,39 @@ if (error) {
 
       if (error) throw error;
 
+      // Safely determine the actual paid amount based on the payment plan
+      let actualPaidAmount = 0;
+      if (booking.paid_amount !== undefined && booking.paid_amount !== null) {
+        actualPaidAmount = Number(booking.paid_amount);
+      } else {
+        // Fallback for older bookings before paid_amount was added
+        if (booking.payment_plan === 'PARTIAL' || booking.payment_status === 'partial') {
+          // If it was a partial payment but paid_amount is missing, we assume 0 or handle it gracefully, 
+          // but we MUST NOT assume they paid the total amount.
+          // Ideally, we'd know the exact partial amount, but since we don't, 0 is safer than full refund.
+          actualPaidAmount = 0; 
+        } else {
+          actualPaidAmount = Number(booking.total_amount || 0);
+        }
+      }
+
+      let currentFee = data?.fee || 0;
+
       // 🟢 Enforce 6-hour policy override in frontend if RPC returns 0
       // Explicitly check for the 6-hour boundary (<= 6 hours)
       if (diffHours <= 6 && (!data || data.fee === 0)) {
-        const fee = serviceCancellationFee !== null ? serviceCancellationFee : (isDeepCleaning ? 299 : 99);
-        data = {
-          ...data,
-          fee: fee,
-          is_free: false,
-          total_amount: data?.total_amount || booking.total_amount,
-          refund_amount: Math.max(0, (data?.total_amount || booking.total_amount || 0) - fee),
-          hours_until_service: diffHours
-        };
+        currentFee = serviceCancellationFee !== null ? serviceCancellationFee : (isDeepCleaning ? 299 : 99);
       }
+
+      data = {
+        ...data,
+        fee: currentFee,
+        is_free: currentFee === 0,
+        total_amount: booking.total_amount,
+        paid_amount: actualPaidAmount,
+        refund_amount: Math.max(0, actualPaidAmount - currentFee),
+        hours_until_service: diffHours
+      };
 
       setCancellationDetails(data);
       setShowCancelModal(true);
@@ -2225,12 +2268,18 @@ if (error) {
                   );
                   if (payment.success) {
                     showToast("Payment Successful!", "success");
-                    onRefresh(); // Refresh booking details
+                    setBooking((prev: any) => ({
+                      ...prev,
+                      remaining_amount: 0,
+                      paid_amount: Number(prev.paid_amount || 0) + Number(prev.remaining_amount || 0),
+                      payment_status: "paid"
+                    }));
+                    setTimeout(() => onRefresh(), 3000); // Delay refresh to avoid fetching stale DB data
                   } else {
-                    showAlert({ type: "error", title: "Payment Failed", message: payment.error || "Payment could not be completed." });
+                    showAlert({ type: "error", title: "Payment Failed", message: "Payment could not be completed." });
                   }
                 } catch (err: any) {
-                  showAlert({ type: "error", title: "Error", message: err.message || "An error occurred during payment." });
+                  showAlert({ type: "error", title: "Payment Failed", message: "An error occurred during payment." });
                 } finally {
                   setProcessingPayment(false);
                 }
@@ -2540,6 +2589,12 @@ if (error) {
                       <Text style={[styles.feeLabel, { color: theme.text }]}>Total Amount</Text>
                       <Text style={[styles.feeValue, { color: theme.text }]}>₹{cancellationDetails.total_amount}</Text>
                     </View>
+                    {cancellationDetails.paid_amount !== undefined && cancellationDetails.paid_amount !== cancellationDetails.total_amount && (
+                      <View style={styles.feeRow}>
+                        <Text style={[styles.feeLabel, { color: theme.text }]}>Paid Amount</Text>
+                        <Text style={[styles.feeValue, { color: theme.text }]}>₹{cancellationDetails.paid_amount}</Text>
+                      </View>
+                    )}
                     <View style={styles.feeRow}>
                       <Text style={[styles.feeLabel, { color: theme.text }]}>Cancellation Charge</Text>
                       <Text style={[styles.feeValue, { color: cancellationDetails.fee > 0 ? '#ef4444' : '#22c55e' }]}>

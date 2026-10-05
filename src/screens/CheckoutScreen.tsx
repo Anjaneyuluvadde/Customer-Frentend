@@ -3781,7 +3781,9 @@ export default function CheckoutScreen({ route }: Props) {
           body: {
             customer_phone: profile?.phone || "",
             customer_name: profile?.full_name || "Valued Customer",
-            amount_paid: String(grandTotal.toFixed(2)),
+            amount_paid: paymentChoice === "partial" && partialConfig 
+              ? `${partialConfig.partialAmount} (Remaining: ₹${(Number(grandTotal.toFixed(2)) - partialConfig.partialAmount).toFixed(2)})`
+              : String(grandTotal.toFixed(2)),
             service_name: checkoutServices[0]?.title || 'Service'
           },
         });

@@ -415,7 +415,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       const { data, error } = await supabase
         .from("user_addresses")
         .select("*")
-        .eq("user_id", uid);
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false });
       if (error) {
         console.error("Error fetching saved addresses:", error);
       } else {
@@ -427,6 +428,21 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       setLoadingAddresses(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (savedAddresses.length > 0 && !selectedAddressId && !manualAddress) {
+      const latestAddress = savedAddresses[0];
+      setSelectedAddressId(latestAddress.id);
+      const full = latestAddress.full_address || "";
+      const match = full.match(/\b\d{6}\b/);
+      const extractedPincode = latestAddress.pincode || (match ? match[0] : "");
+      setPincode(extractedPincode);
+      setManualAddress(full);
+      setBookingLatitude(latestAddress.latitude);
+      setBookingLongitude(latestAddress.longitude);
+    }
+  }, [savedAddresses, selectedAddressId, manualAddress]);
+
 
   useFocusEffect(
     useCallback(() => {
@@ -678,6 +694,31 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     return true;
   };
 
+  const validateBeforeScheduling = (action: string) => {
+    const missing: string[] = [];
+    if (!profile?.full_name?.trim()) missing.push("Name");
+    
+    const isPhoneValid = profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
+    if (!profile?.phone?.trim() || !isPhoneValid) {
+      missing.push("Valid 10-digit Phone Number");
+    }
+
+    if (!manualAddress?.trim() || pincode.trim().length !== 6) {
+      missing.push("Service Address");
+    }
+
+    if (missing.length > 0) {
+      setAlertConfig({
+        title: "Required Fields Missing",
+        message: `Please provide the following details before ${action}:\n\n• ${missing.join("\n• ")}`,
+        type: "warning"
+      });
+      setShowAlertModal(true);
+      return false;
+    }
+    return true;
+  };
+
   // Fetch Current Location
   const fetchCurrentLocation = async () => {
     if (!validateUserDetails()) return;
@@ -712,6 +753,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         if (addressList[0]) {
           const addr: any = addressList[0];
           const fullAddr: string = addr.formattedAddress || "";
+          let finalAddress = fullAddr;
+          let finalPincode = addr.postalCode || "";
 
           if (fullAddr) {
             const parts = fullAddr.split(",").map((p: string) => p.trim()).filter((p: string) => p);
@@ -719,20 +762,21 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             for (let i = parts.length - 1; i >= 0; i--) {
               const pinMatch = parts[i].match(/\b(\d{6})\b/);
               if (pinMatch) {
-                setPincode(pinMatch[1]);
-                pinIdx = i;
+                finalPincode = pinMatch[1];
                 break;
               }
             }
-            if (pinIdx === -1 && addr.postalCode) setPincode(addr.postalCode);
-            setManualAddress(fullAddr || "");
-            setIsAddressSummaryMode(true);
-            setHasUsedLocationFetch(true);
           } else {
-            setManualAddress(addr.street || addr.district || addr.subregion || "");
-            if (addr.postalCode) setPincode(addr.postalCode);
-            setIsAddressSummaryMode(false);
+            // Android often returns null for formattedAddress, build a fallback
+            const fallbackParts = [addr.name, addr.street, addr.district, addr.city, addr.subregion, addr.region, addr.country];
+            finalAddress = fallbackParts.filter(Boolean).join(", ");
           }
+
+          setManualAddress(finalAddress || "Current Location");
+          setPincode(finalPincode);
+          setSelectedAddressId(null); // Clear selected saved address to show the manual card
+          setIsAddressSummaryMode(true);
+          setHasUsedLocationFetch(true);
         }
       } catch (geoErr) {
         console.log("Geocoding failed:", geoErr);
@@ -1606,6 +1650,37 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                       </Pressable>
                     ))
                   )}
+                  {manualAddress && !selectedAddressId ? (
+                    <Pressable
+                      style={[styles.summaryCard, {
+                        backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4',
+                        marginBottom: 12,
+                        borderWidth: 2,
+                        borderColor: theme.primary,
+                        borderRadius: 12,
+                        padding: 16
+                      }]}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ flex: 1, paddingRight: 12 }}>
+                          <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}>
+                            Current Location
+                          </Text>
+                          <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, lineHeight: 20 }}>
+                            {manualAddress}
+                          </Text>
+                          {pincode ? (
+                            <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, fontWeight: '500' }}>
+                              Pincode: {pincode}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  ) : null}
 
                   {savedAddresses.length > 0 && (
                     <Pressable
@@ -1851,7 +1926,11 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     <Pressable
                       key={date}
                       disabled={disabled}
-                      onPress={() => setSelectedDate(date)}
+                      onPress={() => {
+                        if (validateBeforeScheduling('selecting a date')) {
+                          setSelectedDate(date);
+                        }
+                      }}
                       style={[
                         styles.dateBox,
                         selected && styles.selectedDate,
@@ -1887,7 +1966,11 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   <Pressable
                     key={time}
                     disabled={disabled}
-                    onPress={() => setSelectedTime(time)}
+                    onPress={() => {
+                      if (validateBeforeScheduling('selecting a time')) {
+                        setSelectedTime(time);
+                      }
+                    }}
                     style={[
                       styles.timeBox,
                       { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
@@ -1918,18 +2001,6 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
         {/* PROCEED */}
         <Pressable
-          disabled={
-            !selectedDate ||
-            !selectedTime ||
-            selectedServices.length === 0 ||
-            !profile?.full_name?.trim() ||
-            !profile?.phone?.trim() ||
-            profile.phone.replace(/\D/g, "").length !== 10 ||
-            !manualAddress?.trim() ||
-            pincode.trim().length !== 6 ||
-            checkingPincode ||
-            !isPincodeServiceable
-          }
           style={[
             styles.primaryBtn,
             { backgroundColor: theme.primary, marginTop: 20 },
@@ -1946,6 +2017,40 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             styles.disabledBtn,
           ]}
           onPress={async () => {
+            if (!validateBeforeScheduling('proceeding')) return;
+
+            if (!selectedDate || !selectedTime) {
+              setAlertConfig({
+                title: "Schedule Required",
+                message: "Please select a date and time for your service.",
+                type: "warning"
+              });
+              setShowAlertModal(true);
+              return;
+            }
+
+            if (selectedServices.length === 0) {
+              setAlertConfig({
+                title: "Service Required",
+                message: "Please select at least one service.",
+                type: "warning"
+              });
+              setShowAlertModal(true);
+              return;
+            }
+
+            if (checkingPincode) return;
+
+            if (!isPincodeServiceable) {
+              setAlertConfig({
+                title: "Not Serviceable",
+                message: "The selected address pincode is not serviceable.",
+                type: "warning"
+              });
+              setShowAlertModal(true);
+              return;
+            }
+
             const bookingDateText = `${selectedDayName}, ${selectedDate} ${MONTHS[month]} ${year} at ${selectedTime}`;
 
             // Save/Update Profile in Supabase
