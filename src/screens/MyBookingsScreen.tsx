@@ -83,7 +83,7 @@ export default function MyBookingsScreen() {
 
     setLoading(false);
   }, []);
-  
+
   useFocusEffect(
     useCallback(() => {
       fetchMyBookings();

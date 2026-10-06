@@ -82,7 +82,7 @@
 
 //   const checklistItems = React.useMemo(() => {
 //     const serviceName = (services[0]?.title || services[0]?.service_name || "").toLowerCase();
-    
+
 //     if (serviceName.includes("bathroom")) {
 //       return [
 //         "Customer & property details verified",
@@ -136,7 +136,7 @@
 //         "Final inspection completed & customer satisfied"
 //       ];
 //     }
-    
+
 //     return [
 //       "Customer & property details verified",
 //       "Required areas/access confirmed",
@@ -262,11 +262,11 @@
 //       const scheduledDate = new Date(scheduledStr);
 //       const now = new Date();
 //       const diff = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-      
+
 //       const deep = services.some((s: any) => 
 //         s.title.toLowerCase().includes("deep cleaning")
 //       );
-      
+
 //       return { diffHours: diff, isDeepCleaning: deep };
 //     } catch (e) {
 //       return { diffHours: 999, isDeepCleaning: false };
@@ -889,7 +889,7 @@
 //                     </TouchableOpacity>
 //                   );
 //                 })}
-                
+
 //                 <TouchableOpacity 
 //                   style={{
 //                     backgroundColor: isChecklistSubmitted ? "#10B981" : "#F4C430",
@@ -1388,26 +1388,26 @@
 
 
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../context/LanguageContext";
 import { useNotification } from "../hooks/useNotification";
-import { supabase } from "../lib/supabase";
 import { invokeFunction } from "../lib/backendClient";
 import { processPayment } from "../lib/paymentService";
+import { supabase } from "../lib/supabase";
 import { RootStackParamList } from "../navigation/AppNavigator";
 
 type Props = {
   route: RouteProp<RootStackParamList, "BookingDetails">;
 };
 
-import ReviewModal from "../components/ReviewModal";
-import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
-import { useTheme } from "../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
+import ReviewModal from "../components/ReviewModal";
+import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 
 export default function BookingDetailsScreen({ route }: Props) {
@@ -1476,7 +1476,7 @@ export default function BookingDetailsScreen({ route }: Props) {
 
   const checklistItems = React.useMemo(() => {
     const serviceName = (services[0]?.title || services[0]?.service_name || "").toLowerCase();
-    
+
     if (serviceName.includes("bathroom")) {
       return [
         "Customer & property details verified",
@@ -1530,7 +1530,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Final inspection completed & customer satisfied"
       ];
     }
-    
+
     return [
       "Customer & property details verified",
       "Required areas/access confirmed",
@@ -1634,97 +1634,97 @@ export default function BookingDetailsScreen({ route }: Props) {
       //   Alert.alert("Success", "Checklist submitted successfully!");
       // }
 
-  //     if (error) {
-  // console.log("Error details:", error.message);
-  // Alert.alert("Error", "Failed to save: " + error.message);
-  //     }
-// else {
-//   setIsChecklistSubmitted(true);
-//   await AsyncStorage.setItem(`booking_checklist_submitted_${bookingId}`, 'true');
+      //     if (error) {
+      // console.log("Error details:", error.message);
+      // Alert.alert("Error", "Failed to save: " + error.message);
+      //     }
+      // else {
+      //   setIsChecklistSubmitted(true);
+      //   await AsyncStorage.setItem(`booking_checklist_submitted_${bookingId}`, 'true');
 
-//   Alert.alert(
-//     "Success",
-//     "Checklist submitted successfully!",
-//     [
-//       {
-//         text: "OK",
-//         onPress: () => {
-//           navigation.reset({
-//             index: 0,
-//             routes: [
-//               {
-//                 name: "HomeDrawer",
-//                 params: {
-//                   screen: "AuthenticatedScreens",
-//                   params: {
-//                     screen: "MainTabs",
-//                     params: {
-//                       screen: "HomeTab",
-//                     },
-//                   },
-//                 },
-//               },
-//             ],
-//           });
-//         },
-//       },
-//     ],
-//     { cancelable: false }
-//   );
-// }
+      //   Alert.alert(
+      //     "Success",
+      //     "Checklist submitted successfully!",
+      //     [
+      //       {
+      //         text: "OK",
+      //         onPress: () => {
+      //           navigation.reset({
+      //             index: 0,
+      //             routes: [
+      //               {
+      //                 name: "HomeDrawer",
+      //                 params: {
+      //                   screen: "AuthenticatedScreens",
+      //                   params: {
+      //                     screen: "MainTabs",
+      //                     params: {
+      //                       screen: "HomeTab",
+      //                     },
+      //                   },
+      //                 },
+      //               },
+      //             ],
+      //           });
+      //         },
+      //       },
+      //     ],
+      //     { cancelable: false }
+      //   );
+      // }
 
-if (error) {
-  console.log("Error details:", error.message);
-  Alert.alert("Error", "Failed to save: " + error.message);
-} else {
-  // ✅ Flip checklist_submitted = 'TRUE' on the bookings row (uppercase text)
-  const { error: flagError } = await supabase
-    .from("bookings")
-    .update({ checklist_submitted: "TRUE" })
-    .eq("id", bookingId);
+      if (error) {
+        console.log("Error details:", error.message);
+        Alert.alert("Error", "Failed to save: " + error.message);
+      } else {
+        // ✅ Flip checklist_submitted = 'TRUE' on the bookings row (uppercase text)
+        const { error: flagError } = await supabase
+          .from("bookings")
+          .update({ checklist_submitted: "TRUE" })
+          .eq("id", bookingId);
 
-  if (flagError) {
-    console.log(
-      "Failed to update checklist_submitted flag (non-critical):",
-      flagError.message
-    );
-  } else {
-    console.log("✅ bookings.checklist_submitted set to 'TRUE'");
-  }
+        if (flagError) {
+          console.log(
+            "Failed to update checklist_submitted flag (non-critical):",
+            flagError.message
+          );
+        } else {
+          console.log("✅ bookings.checklist_submitted set to 'TRUE'");
+        }
 
-  setIsChecklistSubmitted(true);
-  await AsyncStorage.setItem(`booking_checklist_submitted_${bookingId}`, 'true');
+        setIsChecklistSubmitted(true);
+        await AsyncStorage.setItem(`booking_checklist_submitted_${bookingId}`, 'true');
 
-  Alert.alert(
-    "Success",
-    "Checklist submitted successfully!",
-    [
-      {
-        text: "OK",
-        onPress: () => {
-          navigation.reset({
-            index: 0,
-            routes: [
-              {
-                name: "HomeDrawer",
-                params: {
-                  screen: "AuthenticatedScreens",
-                  params: {
-                    screen: "MainTabs",
-                    params: {
-                      screen: "HomeTab",
+        Alert.alert(
+          "Success",
+          "Checklist submitted successfully!",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: "HomeDrawer",
+                      params: {
+                        screen: "AuthenticatedScreens",
+                        params: {
+                          screen: "MainTabs",
+                          params: {
+                            screen: "HomeTab",
+                          },
+                        },
+                      },
                     },
-                  },
-                },
+                  ],
+                });
               },
-            ],
-          });
-        },
-      },
-    ],
-    { cancelable: false }
-  );
-}
+            },
+          ],
+          { cancelable: false }
+        );
+      }
     } catch (err: any) {
       console.log("Submit checklist error:", err);
       Alert.alert("Error", "Something went wrong while submitting the checklist!");
@@ -1766,42 +1766,42 @@ if (error) {
 
 
   useEffect(() => {
-  if (!booking.id) return;
-  const loadChecklist = async () => {
-    try {
-      // 1. Local cache
-      const stored = await AsyncStorage.getItem(`booking_checklist_${booking.id}`);
-      if (stored) {
-        setChecklist(JSON.parse(stored));
-      }
+    if (!booking.id) return;
+    const loadChecklist = async () => {
+      try {
+        // 1. Local cache
+        const stored = await AsyncStorage.getItem(`booking_checklist_${booking.id}`);
+        if (stored) {
+          setChecklist(JSON.parse(stored));
+        }
 
-      const localSubmitted = await AsyncStorage.getItem(
-        `booking_checklist_submitted_${booking.id}`
-      );
-      if (localSubmitted === "true") {
-        setIsChecklistSubmitted(true);
-      }
-
-      // 2. Remote flag (uppercase text) — source of truth across devices
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("checklist_submitted")
-        .eq("id", booking.id)
-        .maybeSingle();
-
-      if (!error && String(data?.checklist_submitted || "").toUpperCase() === "TRUE") {
-        setIsChecklistSubmitted(true);
-        await AsyncStorage.setItem(
-          `booking_checklist_submitted_${booking.id}`,
-          "true"
+        const localSubmitted = await AsyncStorage.getItem(
+          `booking_checklist_submitted_${booking.id}`
         );
+        if (localSubmitted === "true") {
+          setIsChecklistSubmitted(true);
+        }
+
+        // 2. Remote flag (uppercase text) — source of truth across devices
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("checklist_submitted")
+          .eq("id", booking.id)
+          .maybeSingle();
+
+        if (!error && String(data?.checklist_submitted || "").toUpperCase() === "TRUE") {
+          setIsChecklistSubmitted(true);
+          await AsyncStorage.setItem(
+            `booking_checklist_submitted_${booking.id}`,
+            "true"
+          );
+        }
+      } catch (e) {
+        console.warn("Failed to load checklist", e);
       }
-    } catch (e) {
-      console.warn("Failed to load checklist", e);
-    }
-  };
-  loadChecklist();
-}, [booking.id]);
+    };
+    loadChecklist();
+  }, [booking.id]);
 
   // 🟢 NEW POLICY: Calculate time difference and deep cleaning status
   const { diffHours, isDeepCleaning } = React.useMemo(() => {
@@ -1811,11 +1811,11 @@ if (error) {
       const scheduledDate = new Date(scheduledStr);
       const now = new Date();
       const diff = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-      
-      const deep = services.some((s: any) => 
+
+      const deep = services.some((s: any) =>
         s.title.toLowerCase().includes("deep cleaning")
       );
-      
+
       return { diffHours: diff, isDeepCleaning: deep };
     } catch (e) {
       return { diffHours: 999, isDeepCleaning: false };
@@ -1866,7 +1866,10 @@ if (error) {
   useEffect(() => {
     const checkEligibility = () => {
       let clientEligible = true;
-      if (['COMPLETED', 'CANCELLED'].includes(normalizedWorkStatus)) {
+      if (
+        ['COMPLETED', 'CANCELLED', 'UNDER_REVIEW']
+          .includes(normalizedWorkStatus)
+      ) {
         clientEligible = false;
       }
       setIsEligibleToCancel(clientEligible);
@@ -1902,7 +1905,7 @@ if (error) {
           // If it was a partial payment but paid_amount is missing, we assume 0 or handle it gracefully, 
           // but we MUST NOT assume they paid the total amount.
           // Ideally, we'd know the exact partial amount, but since we don't, 0 is safer than full refund.
-          actualPaidAmount = 0; 
+          actualPaidAmount = 0;
         } else {
           actualPaidAmount = Number(booking.total_amount || 0);
         }
@@ -2221,7 +2224,7 @@ if (error) {
             <Text style={[styles.bold, { color: theme.text }]}>{t("bookingDetails.total")}</Text>
             <Text style={[styles.bold, { color: theme.text }]}>₹{booking.total_amount}</Text>
           </View>
-          
+
           {(booking.paid_amount !== undefined && booking.paid_amount !== null) && (
             <View style={[styles.row, { marginTop: 4 }]}>
               <Text style={{ color: theme.textLight }}>Paid Amount</Text>
@@ -2406,8 +2409,8 @@ if (error) {
             <Text style={styles.cancelButtonText}>
               {booking.refund_status === 'REFUNDED' ? t("bookingDetails.refundCompleted") :
                 booking.refund_status === 'PENDING' ? t("bookingDetails.refundPending") :
-                (booking.refund_status && booking.refund_status !== 'REFUNDED') ? t("bookingDetails.refundInitiated") :
-                  t("bookingDetails.bookingCancelled")}
+                  (booking.refund_status && booking.refund_status !== 'REFUNDED') ? t("bookingDetails.refundInitiated") :
+                    t("bookingDetails.bookingCancelled")}
             </Text>
             {booking.refund_status && booking.refund_status !== 'REFUNDED' && (
               <Text style={{ color: '#f1f5f9', fontSize: 13, marginTop: 6, fontWeight: '500' }}>
@@ -2492,7 +2495,7 @@ if (error) {
                 </Text>
                 <Text style={{ color: theme.textLight, fontSize: 13, textAlign: "center", lineHeight: 20 }}>
                   {/* Service must be completed (Start and End OTPs verified) to unlock this checklist. */}
-                    Checklist will be available once the service moves to UNDER_REVIEW status.
+                  Checklist will be available once the service moves to UNDER_REVIEW status.
 
                 </Text>
               </View>
@@ -2532,8 +2535,8 @@ if (error) {
                     </TouchableOpacity>
                   );
                 })}
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={{
                     backgroundColor: isChecklistSubmitted ? "#10B981" : "#F4C430",
                     paddingVertical: 14,
@@ -2541,7 +2544,7 @@ if (error) {
                     alignItems: "center",
                     marginTop: 12,
                     opacity: (submittingChecklist || isChecklistSubmitted) ? 0.7 : 1
-                  }} 
+                  }}
                   onPress={handleCustomerSubmit}
                   disabled={submittingChecklist || isChecklistSubmitted}
                 >
