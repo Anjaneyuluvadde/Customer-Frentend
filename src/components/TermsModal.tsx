@@ -28,6 +28,7 @@ export default function TermsModal({ visible, onClose, onAccept, prefetchedTerms
       const { data, error } = await supabase
         .from("app_policies")
         .select("terms_and_conditions")
+        .eq("app_type", "customer")
         .limit(1)
         .maybeSingle();
         

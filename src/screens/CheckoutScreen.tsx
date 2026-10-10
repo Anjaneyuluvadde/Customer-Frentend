@@ -3073,6 +3073,7 @@ export default function CheckoutScreen({ route }: Props) {
     const { data, error } = await supabase
       .from("app_policies")
       .select("user_policies, terms_and_conditions")
+      .eq("app_type", "customer")
       .limit(1)
       .maybeSingle();
 
@@ -3781,7 +3782,7 @@ export default function CheckoutScreen({ route }: Props) {
           body: {
             customer_phone: profile?.phone || "",
             customer_name: profile?.full_name || "Valued Customer",
-            amount_paid: paymentChoice === "partial" && partialConfig 
+            amount_paid: paymentChoice === "partial" && partialConfig
               ? `${partialConfig.partialAmount} (Remaining: ₹${(Number(grandTotal.toFixed(2)) - partialConfig.partialAmount).toFixed(2)})`
               : String(grandTotal.toFixed(2)),
             service_name: checkoutServices[0]?.title || 'Service'

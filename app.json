@@ -2,7 +2,7 @@
   "expo": {
     "name": "The Neatify Team",
     "slug": "the-neatify-team-app",
-    "version": "1.0.9",
+    "version": "1.0.11",
     "orientation": "portrait",
     "scheme": "theneatifyteam",
     "icon": "./assets/images/icon.png",
@@ -31,7 +31,7 @@
           "apiKey": "AIzaSyC7CFBCBSfRPefwPvAGfqwhN0JF1EmKBbI"
         }
       },
-      "versionCode": 13,
+      "versionCode": 15,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"

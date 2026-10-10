@@ -2612,7 +2612,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 export default function App() {
   const [initialRoute, setInitialRoute] = useState<
     "LocationAccess" | "Login" | "HomeDrawer" | "CompleteProfile"
-  >("HomeDrawer");
+  >("Login");
 
   const [loading, setLoading] = useState(true);
   const [showGoogleLoadingPopup, setShowGoogleLoadingPopup] = useState(false);
@@ -2786,7 +2786,7 @@ export default function App() {
             sessionError.status === 400
           ) {
             await supabase.auth.signOut();
-            setInitialRoute("LocationAccess");
+            setInitialRoute("Login");
             setLoading(false);
             return;
           }
@@ -2796,12 +2796,13 @@ export default function App() {
         if (session?.user) {
           handlePushToken(session.user.id);
           hasCheckedOnce = true;
+          setInitialRoute("LocationAccess");
+        } else {
+          setInitialRoute("Login");
         }
-
-        setInitialRoute("LocationAccess");
       } catch (err) {
         console.error("App init failed:", err);
-        setInitialRoute("LocationAccess");
+        setInitialRoute("Login");
       } finally {
         setLoading(false);
       }
@@ -2825,6 +2826,10 @@ export default function App() {
           skipAuthRedirect.current = false;
           hasCheckedOnce = false;
           googleAuthInProgress.current = false;
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
           return;
         }
 
@@ -2906,7 +2911,7 @@ export default function App() {
             if (isComplete) {
               navigationRef.current?.reset({
                 index: 0,
-                routes: [{ name: "HomeDrawer" }],
+                routes: [{ name: "LocationAccess" }],
               });
             }
 

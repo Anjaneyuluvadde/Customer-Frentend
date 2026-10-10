@@ -28,6 +28,7 @@ export default function PrivacyModal({ visible, onClose, onAccept, prefetchedPri
       const { data, error } = await supabase
         .from("app_policies")
         .select("user_policies")
+        .eq("app_type", "customer")
         .limit(1)
         .maybeSingle();
         

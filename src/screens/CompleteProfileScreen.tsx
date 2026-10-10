@@ -358,8 +358,8 @@ export default function CompleteProfileScreen() {
                 rawAddress: rawAddress
             });
 
-            // 7. Reset to Home
-            navigation.reset({ index: 0, routes: [{ name: "HomeDrawer" }] });
+            // 7. Reset to LocationAccess
+            navigation.reset({ index: 0, routes: [{ name: "LocationAccess" }] });
 
         } catch (error: any) {
             console.error("Save Profile Error:", error);

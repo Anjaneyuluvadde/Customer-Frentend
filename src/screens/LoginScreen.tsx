@@ -3079,7 +3079,7 @@ export default function LoginScreen(props: any) {
 
         if (profile && profile.full_name) {
           showToast("Welcome back!");
-          navigation.reset({ index: 0, routes: [{ name: "HomeDrawer" }] });
+          navigation.reset({ index: 0, routes: [{ name: "LocationAccess" }] });
         } else {
           navigation.navigate("CompleteProfile", {
             userId: data.user.id,
@@ -3126,20 +3126,22 @@ export default function LoginScreen(props: any) {
         <View style={styles.bgCircleBottom} />
       </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          if (otpSent) {
-            setOtpSent(false);
-            setOtp("");
-            setOtpArray(["", "", "", "", "", ""]);
-          } else {
-            navigation.canGoBack() ? navigation.goBack() : navigation.replace("HomeDrawer");
-          }
-        }}
-        style={[styles.backBtn, { top: Math.max(insets.top, 10) }]}
-      >
-        <Ionicons name="arrow-back" size={24} color="#111" />
-      </TouchableOpacity>
+      {otpSent || navigation.canGoBack() ? (
+        <TouchableOpacity
+          onPress={() => {
+            if (otpSent) {
+              setOtpSent(false);
+              setOtp("");
+              setOtpArray(["", "", "", "", "", ""]);
+            } else if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+          }}
+          style={[styles.backBtn, { top: Math.max(insets.top, 10) }]}
+        >
+          <Ionicons name="arrow-back" size={24} color="#111" />
+        </TouchableOpacity>
+      ) : null}
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView

@@ -656,6 +656,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     const { data, error } = await supabase
       .from("app_policies")
       .select("user_policies, terms_and_conditions")
+      .eq("app_type", "customer")
       .limit(1)
       .maybeSingle();
 
