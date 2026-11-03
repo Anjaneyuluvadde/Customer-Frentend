@@ -2,22 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StatusBar,
   StyleSheet,
   Text,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import Header from "../components/Header";
 import ServiceCard from "../components/ServiceCard";
 
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
-import { supabase } from "../lib/supabase";
+import { getCustomerServices } from "../lib/customerApi";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { Service } from "../types/service";
 
@@ -33,21 +31,38 @@ export default function CategoryDetailScreen({ route }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchServices = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .eq("service_type", category)
-      .order("sort_order", { ascending: true });
+ 
 
-    if (error) {
-      console.error("Error fetching services:", error);
-    } else {
-      setServices(data || []);
-    }
+const fetchServices = useCallback(async () => {
+  setLoading(true);
+
+  console.log(
+    "[CUSTOMER FASTAPI] CategoryDetailScreen opened:",
+    category
+  );
+
+  try {
+    const data = await getCustomerServices({
+      service_type: category,
+    });
+
+    console.log(
+      "[CUSTOMER FASTAPI] Services received:",
+      data.length
+    );
+
+    setServices(data);
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Request failed:",
+      error
+    );
+    setServices([]);
+  } finally {
     setLoading(false);
-  }, [category]);
+  }
+}, [category]);
+
 
   useEffect(() => {
     fetchServices();

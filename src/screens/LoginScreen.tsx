@@ -1,3 +1,4 @@
+import { getCustomerProfile, sendCustomerAuthOtp, verifyCustomerAuthOtp } from "../lib/customerApi";
 // import { Ionicons } from "@expo/vector-icons";
 // import { useNavigation } from "@react-navigation/native";
 // import { Image } from "expo-image";
@@ -3019,13 +3020,8 @@ export default function LoginScreen(props: any) {
     setLoading(true);
 
     try {
-      const formattedPhone = `+91${cleanNumber}`;
-
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-      });
-
-      if (error) throw error;
+      // ✅ Send OTP via Customer Backend API (Replaces msg91-hook edge function)
+      await sendCustomerAuthOtp(cleanNumber);
 
       showToast("OTP Sent Successfully!");
       setOtpSent(true);
@@ -3056,25 +3052,30 @@ export default function LoginScreen(props: any) {
       const cleanNumber = phoneNumber.replace(/\D/g, "");
       const formattedPhone = `+91${cleanNumber}`;
 
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
-        token: otp,
-        type: 'sms'
+      // ✅ Verify OTP via Customer Backend API (Replaces verify-otp edge function)
+      const authRes = await verifyCustomerAuthOtp(cleanNumber, otp);
+      if (!authRes?.session) {
+        throw new Error(authRes?.message || "Invalid OTP");
+      }
+
+      // Sync active session into Supabase client so all downstream auth listeners stay authenticated
+      await supabase.auth.setSession({
+        access_token: authRes.session.access_token,
+        refresh_token: authRes.session.refresh_token,
       });
 
-      if (error) throw error;
+      const data = {
+        session: authRes.session,
+        user: authRes.session.user || authRes.user,
+      };
 
       if (data.session && data.user) {
-        const { data: profile, error: profileError } = await supabase
-          .from("profile")
-          .select("*")
-          .ilike("phone", `%${cleanNumber}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          throw profileError;
+        let profile = null;
+        try {
+          const profResp = await getCustomerProfile();
+          profile = profResp?.data;
+        } catch (e) {
+          console.log("[Login] Error loading profile from backend:", e);
         }
 
         if (profile && profile.full_name) {
@@ -3234,13 +3235,13 @@ export default function LoginScreen(props: any) {
                       const authResult = await signInWithGoogle();
 
                       if (authResult && authResult.user) {
-                        const { data: profile, error: profileError } = await supabase
-                          .from("profile")
-                          .select("*")
-                          .eq("id", authResult.user.id)
-                          .maybeSingle();
-
-                        if (profileError) throw profileError;
+                        let profile = null;
+                        try {
+                          const profResp = await getCustomerProfile();
+                          profile = profResp?.data;
+                        } catch (e) {
+                          console.log("[Google Auth] Error loading profile from backend:", e);
+                        }
 
                         if (profile && profile.full_name) {
                           navigation.reset({ index: 0, routes: [{ name: "HomeDrawer" }] });

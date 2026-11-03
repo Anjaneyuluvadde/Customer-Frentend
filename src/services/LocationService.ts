@@ -1,3 +1,4 @@
+import { checkPincodeServiceable } from "../lib/customerApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { getServiceAreaMatch, isServiceable } from "../config/serviceAreas";
@@ -223,19 +224,9 @@ public static async getSelectedServiceArea(): Promise<ServiceAreaSelection | nul
 
       if (postalCode) {
         try {
-          const { data, error } = await supabase
-            .from("hub_locations")
-            .select("hub_name, is_active")
-            .eq("pincode", postalCode)
-            .eq("is_active", true)
-            .limit(1);
-
-          if (error) {
-            console.warn("Supabase error fetching service areas:", error.message);
-            finalServiceable = false;
-            serviceStatus = 'error';
-          } else if (data && data.length > 0) {
-            finalLocality = data[0].hub_name || finalLocality;
+          const pinCheck = await checkPincodeServiceable(postalCode);
+          if (pinCheck && pinCheck.serviceable && pinCheck.hub) {
+            finalLocality = pinCheck.hub.hub_name || pinCheck.hub.name || finalLocality;
             finalServiceable = true;
             serviceStatus = 'success';
           } else {
@@ -243,7 +234,7 @@ public static async getSelectedServiceArea(): Promise<ServiceAreaSelection | nul
             serviceStatus = 'unserviceable';
           }
         } catch (e) {
-          console.warn("Network error fetching service areas:", e);
+          console.warn("[CUSTOMER FASTAPI] Exception checking serviceability:", e);
           finalServiceable = false;
           serviceStatus = 'error';
         }

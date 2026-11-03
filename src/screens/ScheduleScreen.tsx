@@ -26,7 +26,21 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 import { useNotification } from "../hooks/useNotification";
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase";
+import {
+  checkPincodeServiceable as apiCheckPincodeServiceable,
+  getCustomerAddresses,
+  getCustomerAddons,
+  getCustomerHubCategoryCounts,
+  getCustomerHubLocations,
+  getCustomerPolicies,
+  getCustomerProfile,
+  getCustomerScheduleConfig,
+  getCustomerScheduleDateBookings,
+  getCustomerServices,
+  saveCustomerAddress,
+  updateCustomerProfile,
+} from "../lib/customerApi";
 import {
   RootStackParamList,
   SelectedService,
@@ -412,16 +426,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const fetchSavedAddresses = useCallback(async (uid: string) => {
     setLoadingAddresses(true);
     try {
-      const { data, error } = await supabase
-        .from("user_addresses")
-        .select("*")
-        .eq("user_id", uid)
-        .order("created_at", { ascending: false });
-      if (error) {
-        console.error("Error fetching saved addresses:", error);
-      } else {
-        setSavedAddresses(data || []);
-      }
+      const data = await getCustomerAddresses();
+      setSavedAddresses(data || []);
     } catch (e) {
       console.error("Error in fetchSavedAddresses:", e);
     } finally {
@@ -483,24 +489,19 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     if (!editingAddress || !userId) return;
     setIsSavingAddress(true);
     try {
-      const { error } = await supabase
-        .from('user_addresses')
-        .update({
-          house_no: editHouseNo.trim(),
-          landmark: editLandmark.trim(),
-          full_address: editFullAddress.trim()
-        })
-        .eq('id', editingAddress.id);
-
-      if (!error) {
-        setEditingAddress(null);
-        fetchSavedAddresses(userId);
-      } else {
-        setAlertConfig({ title: "Error", message: "Could not update address", type: "error" });
-        setShowAlertModal(true);
-      }
+      await saveCustomerAddress({
+        tag: editingAddress.tag || "Home",
+        house_no: editHouseNo.trim(),
+        landmark: editLandmark.trim(),
+        full_address: editFullAddress.trim(),
+        pincode: editingAddress.pincode,
+      });
+      setEditingAddress(null);
+      fetchSavedAddresses(userId);
     } catch (e) {
       console.error(e);
+      setAlertConfig({ title: "Error", message: "Could not update address", type: "error" });
+      setShowAlertModal(true);
     } finally {
       setIsSavingAddress(false);
     }
@@ -583,86 +584,53 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
   // Pincode Serviceability Check moved below to use resolveHubFromLocation
 
-  // Load Profile from Supabase
+  // Load Profile from FastAPI
   const loadProfile = useCallback(async () => {
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) return;
+    try {
+      const { profile: profileData, resolved_user_id } = await getCustomerProfile();
 
-    // 1. Extract the phone number for the catch-all search
-    const rawPhone = authData.user.phone || authData.user.user_metadata?.phone_number || "";
-    const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
+      if (profileData) {
+        setUserId(resolved_user_id || profileData.id);
 
-    let profileData = null;
+        const cleanedProfile = {
+          ...profileData,
+          phone: formatDisplayPhone(profileData.phone)
+        };
+        setProfile(cleanedProfile);
 
-    // 2. CATCH-ALL SEARCH: Find the profile by phone number first
-    if (cleanPhone) {
-      const { data: phoneData } = await supabase
-        .from("profile")
-        .select("id, full_name, email, phone, address, pincode")
-        .ilike("phone", `%${cleanPhone}`)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        const selectedServiceArea = await LocationService.getSelectedServiceArea();
 
-      profileData = phoneData;
-    }
+        if (selectedServiceArea && selectedServiceArea.isServiceable) {
+          setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
+        } else {
+          setServiceAreaContext(null);
+        }
 
-    // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
-    if (!profileData) {
-      const { data: idData } = await supabase
-        .from("profile")
-        .select("id, full_name, email, phone, address, pincode")
-        .eq("id", authData.user.id)
-        .maybeSingle();
-
-      profileData = idData;
-    }
-
-    if (profileData) {
-      // CRITICAL: Set the active ID to the Profile's true legacy ID.
-      // This automatically triggers fetchSavedAddresses to load the legacy addresses!
-      setUserId(profileData.id);
-
-      const cleanedProfile = {
-        ...profileData,
-        phone: formatDisplayPhone(profileData.phone)
-      };
-      setProfile(cleanedProfile);
-
-      const selectedServiceArea = await LocationService.getSelectedServiceArea();
-
-      if (selectedServiceArea && selectedServiceArea.isServiceable) {
-        setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
+        setPincode("");
+        setManualAddress("");
+        setBookingLatitude(null);
+        setBookingLongitude(null);
+        setIsAddressSummaryMode(true);
+        setHasUsedLocationFetch(false);
       } else {
-        setServiceAreaContext(null);
+        setUserId(resolved_user_id);
+        setIsAddressSummaryMode(false);
       }
-
-      setPincode("");
-      setManualAddress("");
-      setBookingLatitude(null);
-      setBookingLongitude(null);
-      setIsAddressSummaryMode(true);
-      setHasUsedLocationFetch(false);
-    } else {
-      // Brand new user scenario
-      setUserId(authData.user.id);
+    } catch (_) {
       setIsAddressSummaryMode(false);
+    } finally {
+      setLoadingProfile(false);
     }
-    setLoadingProfile(false);
   }, []);
 
-  // Fetch Policies
+  // Fetch Policies from FastAPI
   const fetchPolicies = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("app_policies")
-      .select("user_policies, terms_and_conditions")
-      .eq("app_type", "customer")
-      .limit(1)
-      .maybeSingle();
-
-    if (data) {
-      setPolicies(data as Policies);
-    }
+    try {
+      const data = await getCustomerPolicies();
+      if (data) {
+        setPolicies(data as Policies);
+      }
+    } catch (_) {}
   }, []);
 
   useEffect(() => {
@@ -805,29 +773,26 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   /* ================= FETCH SERVICES & ADDONS ================= */
 
   const fetchData = useCallback(async () => {
-    // Fetch services
-    const { data: servicesData } = await supabase
-      .from("services")
-      .select("*");
-    if (servicesData) setAllServices(servicesData);
+    try {
+      const servicesData = await getCustomerServices();
+      if (servicesData) setAllServices(servicesData);
+    } catch (e) {
+      console.error("[CUSTOMER FASTAPI] Error fetching services:", e);
+    }
 
-    // Fetch addons (only active ones)
-    const { data: addonsData, error: addonsError } = await supabase
-      .from("add_ons")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
+    try {
+      const addonsData = await getCustomerAddons();
+      if (addonsData) setAddons(addonsData as any);
+    } catch (e) {
+      console.error("[CUSTOMER FASTAPI] Error fetching addons:", e);
+    }
 
-    if (addonsError) console.error("Error fetching addons:", addonsError);
-    if (addonsData) setAddons(addonsData as AddOn[]);
-
-    // Fetch schedule config (time_slots, years)
-    const { data: configData, error: configError } = await supabase
-      .from("schedule_config")
-      .select("*");
-
-    if (configError) {
-      console.error("Error fetching schedule config:", configError);
+    let configData: any[] = [];
+    try {
+      const configRes = await getCustomerScheduleConfig();
+      configData = configRes.raw || [];
+    } catch (e) {
+      console.error("[CUSTOMER FASTAPI] Error fetching schedule config:", e);
       return;
     }
 
@@ -914,46 +879,48 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const resolveHubFromLocation = useCallback(async (pinStr: string, addressStr: string = "") => {
     const cleanPin = String(pinStr || "").replace(/\D/g, "").slice(0, 6);
 
-    // 1. Match by pincode in hub_locations table
+    // 1. Match by pincode in hub_locations via customer API
     if (cleanPin.length === 6) {
-      const { data: pinLocs, error } = await supabase
-        .from("hub_locations")
-        .select("hub_name, location_name, is_active")
-        .eq("pincode", cleanPin);
-
-      if (!error && pinLocs && pinLocs.length > 0) {
-        if (addressStr) {
-          const addrUpper = addressStr.toUpperCase();
-          const specificMatch = pinLocs.find((hl: any) => {
-            const locName = (hl.location_name || "").toUpperCase().trim();
-            return locName && addrUpper.includes(locName);
-          });
-          if (specificMatch) {
-            return { hubName: specificMatch.hub_name, isActive: specificMatch.is_active !== false };
+      try {
+        const pinCheck = await apiCheckPincodeServiceable(cleanPin);
+        if (pinCheck && pinCheck.serviceable && pinCheck.hub) {
+          const hubName = pinCheck.hub.hub_name || pinCheck.hub.name;
+          const locations = pinCheck.locations || [];
+          if (addressStr && locations.length > 0) {
+            const addrUpper = addressStr.toUpperCase();
+            const specificMatch = locations.find((hl: any) => {
+              const locName = (hl.location_name || "").toUpperCase().trim();
+              return locName && addrUpper.includes(locName);
+            });
+            if (specificMatch) {
+              return { hubName, isActive: specificMatch.is_active !== false };
+            }
           }
+          return { hubName, isActive: true };
         }
-
-        const activeMatch = pinLocs.find((hl: any) => hl.is_active !== false) || pinLocs[0];
-        return { hubName: activeMatch.hub_name, isActive: activeMatch.is_active !== false };
+      } catch (err) {
+        console.error("[CUSTOMER FASTAPI] Error checking pincode serviceability:", err);
       }
     }
 
-    // 2. Fallback: Match by location_name or address substring in hub_locations table
+    // 2. Fallback: Match by location_name or address substring in all hub_locations
     if (addressStr) {
-      const addrUpper = addressStr.toUpperCase();
-      const { data: allHubLocs } = await supabase
-        .from("hub_locations")
-        .select("hub_name, location_name, pincode, is_active");
+      try {
+        const addrUpper = addressStr.toUpperCase();
+        const allHubLocs = await getCustomerHubLocations();
 
-      if (allHubLocs && allHubLocs.length > 0) {
-        const match = allHubLocs.find((hl: any) => {
-          const locName = (hl.location_name || "").toUpperCase().trim();
-          return locName && addrUpper.includes(locName);
-        });
+        if (allHubLocs && allHubLocs.length > 0) {
+          const match = allHubLocs.find((hl: any) => {
+            const locName = (hl.location_name || "").toUpperCase().trim();
+            return locName && addrUpper.includes(locName);
+          });
 
-        if (match) {
-          return { hubName: match.hub_name, isActive: match.is_active !== false };
+          if (match) {
+            return { hubName: match.hub_name, isActive: match.is_active !== false };
+          }
         }
+      } catch (err) {
+        console.error("[CUSTOMER FASTAPI] Error fetching all hub locations:", err);
       }
     }
 
@@ -967,18 +934,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     let rawType = (firstService?.service_type || (firstService as any)?.category || firstService?.title || "").toUpperCase().trim();
 
     if (!rawType && firstService?.id) {
-      try {
-        const { data: sRow } = await supabase
-          .from("services")
-          .select("service_type, category")
-          .eq("id", firstService.id)
-          .maybeSingle();
-
-        if (sRow) {
-          rawType = (sRow.service_type || sRow.category || "").toUpperCase().trim();
-        }
-      } catch (e) {
-        console.error("Error fetching service_type from DB:", e);
+      const sRow = allServices.find((s: any) => s.id === firstService.id);
+      if (sRow) {
+        rawType = (sRow.service_type || (sRow as any).category || "").toUpperCase().trim();
       }
     }
 
@@ -993,10 +951,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     if (mappedSpaceType === "FULL HOME DEEP CLEANING") mappedSpaceType = "DEEP CLEANING";
 
     try {
-      const { data: rows } = await supabase
-        .from("hub_category_counts")
-        .select("count, category, hub")
-        .ilike("hub", hubName.trim());
+      const rows = await getCustomerHubCategoryCounts(hubName.trim());
 
       if (!rows || rows.length === 0) return 0;
 
@@ -1056,11 +1011,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       const dateString = `${year}-${mStr}-${dStr}`;
 
       try {
-        const { data: bData, error } = await supabase
-          .from("bookings")
-          .select("*");
-
-        if (error) throw error;
+        const bData = await getCustomerScheduleDateBookings(dateString);
 
         const activeBookings = (bData || []).filter((b: any) => {
           const ws = String(b.work_status || b.status || "").toUpperCase();
@@ -1073,7 +1024,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
         setDateBookings(activeBookings);
       } catch (err) {
-        console.error("Error fetching date bookings:", err);
+        console.error("[CUSTOMER FASTAPI] Error fetching date bookings:", err);
       }
     };
 
@@ -2054,18 +2005,19 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
             const bookingDateText = `${selectedDayName}, ${selectedDate} ${MONTHS[month]} ${year} at ${selectedTime}`;
 
-            // Save/Update Profile in Supabase
+            // Save/Update Profile via customer API
             if (userId) {
               const fullAddressStr = `${manualAddress.trim()} - ${pincode.trim()}`;
-              await supabase
-                .from("profile")
-                .update({
+              try {
+                await updateCustomerProfile({
                   full_name: profile?.full_name?.trim(),
                   phone: profile?.phone?.trim(),
                   address: fullAddressStr,
                   pincode: pincode.trim(),
-                })
-                .eq("id", userId);
+                });
+              } catch (err) {
+                console.error("[CUSTOMER FASTAPI] Failed updating profile before checkout:", err);
+              }
             }
 
             navigation.navigate("Checkout", {

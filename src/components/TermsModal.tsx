@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Modal, View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
+import { getCustomerPolicies } from "../lib/customerApi";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { COLORS } from "../theme/colors";
@@ -25,15 +25,13 @@ export default function TermsModal({ visible, onClose, onAccept, prefetchedTerms
     
     // Otherwise, fetch when the modal becomes visible
     const fetchTerms = async () => {
-      const { data, error } = await supabase
-        .from("app_policies")
-        .select("terms_and_conditions")
-        .eq("app_type", "customer")
-        .limit(1)
-        .maybeSingle();
-        
-      if (!error && data) {
-        setTerms(data.terms_and_conditions);
+      try {
+        const policies = await getCustomerPolicies();
+        if (policies && policies.terms_and_conditions) {
+          setTerms(policies.terms_and_conditions);
+        }
+      } catch (err) {
+        console.error("Error fetching terms and conditions:", err);
       }
     };
     if (visible && !terms) {

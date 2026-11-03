@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Modal, View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
+import { getCustomerPolicies } from "../lib/customerApi";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { COLORS } from "../theme/colors";
@@ -25,15 +25,13 @@ export default function PrivacyModal({ visible, onClose, onAccept, prefetchedPri
     
     // Otherwise, fetch when the modal becomes visible
     const fetchPrivacy = async () => {
-      const { data, error } = await supabase
-        .from("app_policies")
-        .select("user_policies")
-        .eq("app_type", "customer")
-        .limit(1)
-        .maybeSingle();
-        
-      if (!error && data) {
-        setPrivacy(data.user_policies);
+      try {
+        const policies = await getCustomerPolicies();
+        if (policies && policies.user_policies) {
+          setPrivacy(policies.user_policies);
+        }
+      } catch (err) {
+        console.error("Error fetching privacy policy:", err);
       }
     };
     if (visible && !privacy) {

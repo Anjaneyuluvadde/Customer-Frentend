@@ -7,6 +7,7 @@
 
 // import { useTheme } from '../context/ThemeContext';
 // import { supabase } from '../lib/supabase';
+import { checkPincodeServiceable, getCustomerAddresses, getCustomerProfile, saveCustomerAddress } from "../lib/customerApi";
 // import LocationService, { LocationResult } from '../services/LocationService';
 // import { COLORS } from '../theme/colors';
 
@@ -458,6 +459,7 @@
 // import { useTheme } from '../context/ThemeContext';
 // import { useAuthGuard } from '../hooks/useAuthGuard';
 // import { supabase } from '../lib/supabase';
+// import { checkPincodeServiceable, getCustomerAddresses, saveCustomerAddress } from "../lib/customerApi";
 // import LocationService, { LocationResult } from '../services/LocationService';
 // import { COLORS } from '../theme/colors';
 
@@ -958,6 +960,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../context/ThemeContext';
 import { useAuthGuard } from '../hooks/useAuthGuard';
 import { supabase } from '../lib/supabase';
+// import { checkPincodeServiceable, getCustomerAddresses, saveCustomerAddress } from "../lib/customerApi";
 import LocationService, { LocationResult } from '../services/LocationService';
 import { COLORS } from '../theme/colors';
 
@@ -1002,36 +1005,21 @@ export default function LocationSearchScreen() {
     handleUseCurrentLocation();
 
     const fetchUserAndAddresses = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      const rawPhone = session.user.phone || session.user.user_metadata?.phone_number || "";
-      const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
-
-      let resolvedId = session.user.id;
-
-      if (cleanPhone) {
-        const { data: phoneData } = await supabase
-          .from("profile")
-          .select("id")
-          .ilike("phone", `%${cleanPhone}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (phoneData && phoneData.id) {
-          resolvedId = phoneData.id;
+      try {
+        const profileResp = await getCustomerProfile();
+        const resolvedId = profileResp?.resolved_user_id || profileResp?.data?.id;
+        if (resolvedId) {
+          setTargetUserId(resolvedId);
         }
+      } catch (err) {
+        console.log("[CUSTOMER FASTAPI] fetchProfile error:", err);
       }
-
-      setTargetUserId(resolvedId);
-
-      const { data } = await supabase
-        .from('user_addresses')
-        .select('*')
-        .eq('user_id', resolvedId);
-
-      if (data) setSavedAddresses(data);
+      try {
+        const addresses = await getCustomerAddresses();
+        if (addresses) setSavedAddresses(addresses);
+      } catch (err) {
+        console.log("[CUSTOMER FASTAPI] fetchAddresses error:", err);
+      }
     };
 
     fetchUserAndAddresses();
@@ -1141,16 +1129,12 @@ export default function LocationSearchScreen() {
       const cleanedPin = currentPincode?.trim() || "";
 
       if (cleanedPin.length === 6) {
-        const { data, error } = await supabase
-          .from("hub_locations")
-          .select("id")
-          .eq("pincode", cleanedPin)
-          .eq("is_active", true)
-          .limit(1);
-
-        if (!error && data && data.length > 0) {
-          isServiceable = true;
-        }
+        try {
+          const check = await checkPincodeServiceable(cleanedPin);
+          if (check.serviceable) {
+            isServiceable = true;
+          }
+        } catch (_) {}
       }
 
       if (isServiceable) {
@@ -1170,8 +1154,9 @@ export default function LocationSearchScreen() {
       Alert.alert("Required", "Please enter your House / Flat / Block No.");
       return;
     }
-    if (!targetUserId) {
-      Alert.alert("Error", "User identification missing. Please log in again.");
+
+    const isAuth = await checkAuth("save your address");
+    if (!isAuth) {
       return;
     }
 
@@ -1183,35 +1168,15 @@ export default function LocationSearchScreen() {
       // Because currentAddress now has the pincode, finalFullAddress will also have it at the end!
       const finalFullAddress = `${prefix}${mid}, ${currentAddress}`;
 
-      // 1. Delete ANY existing addresses with this tag for the LEGACY user
-      await supabase
-        .from('user_addresses')
-        .delete()
-        .eq('user_id', targetUserId)
-        .eq('tag', addressTag);
-
-      // 2. Insert the fresh, updated address under the LEGACY user
-      await supabase.from('user_addresses').insert({
-        user_id: targetUserId,
+      await saveCustomerAddress({
         tag: addressTag,
         house_no: houseNo.trim(),
         landmark: landmark.trim(),
         full_address: finalFullAddress,
         latitude: region.latitude,
         longitude: region.longitude,
-        pincode: currentPincode
+        pincode: currentPincode || undefined,
       });
-
-      // 3. ONLY if it is Home, also update the master profile table
-      if (addressTag === "Home") {
-        await supabase
-          .from('profile')
-          .update({
-            address: finalFullAddress,
-            pincode: currentPincode // ---> CHANGE HERE: Saves the pincode properly to the profile table <---
-          })
-          .eq('id', targetUserId);
-      }
 
       const locality = currentRawAddress ? LocationService.getLocalityString(currentRawAddress) : "Selected Location";
       const result: LocationResult = {
@@ -1227,10 +1192,15 @@ export default function LocationSearchScreen() {
 
       await LocationService.setSelectedLocation(result);
 
+      try {
+        const addresses = await getCustomerAddresses();
+        if (addresses) setSavedAddresses(addresses);
+      } catch (_) {}
+
       setShowAddressModal(false);
       navigation.goBack();
-    } catch (e) {
-      Alert.alert("Error", "Could not save address to profile.");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not save address to profile.");
     } finally {
       setIsSavingProfile(false);
     }

@@ -20,17 +20,22 @@ import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
 import AnimatedProcessTimeline from "../components/AnimatedProcessTimeline";
 import DescriptionCard from "../components/DescriptionCard";
 import FAQAccordion from "../components/FAQAccordion";
-import ServiceEquipmentSection from "../components/ServiceEquipmentSection";
 import ServiceHowItWorksVideos from "../components/ServiceHowItWorksVideos";
 import SimilarServices from "../components/SimilarServices";
 import WorkIncludesCard from "../components/WorkIncludesCard";
 import WorkNotIncludesCard from "../components/WorkNotIncludesCard";
-import { getEquipmentForService } from "../data/serviceEquipment";
 import { applyCartRules, useBookingCart } from "../context/BookingCartContext";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
+import {
+  getCustomerAddons,
+  getCustomerServiceDetails,
+  getCustomerServices,
+  getCustomerOffers,
+  getCustomerProfile,
+} from "../lib/customerApi";
 import { supabase } from "../lib/supabase";
 import { RootStackParamList, SelectedService } from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
@@ -288,70 +293,88 @@ export default function ServiceDetailScreen({ route }: Props) {
   const fetchAddons = useCallback(async () => {
     setLoadingAddons(true);
     // Fetch Services (keeping existing logic though Add Another Service is removed from UI, might be useful later)
-    const { data: servicesData } = await supabase
-      .from("services")
-      .select(
-        "id, title, service_type, main_category_id, duration, price, original_price, discount_percent, discount_label, tax_percent, image, sort_order, description, gallery_images, work_not_included"
-      );
-    if (servicesData) setAvailableServices(servicesData as Service[]);
+   try {
+  const servicesData = await getCustomerServices();
+
+  console.log(
+    "[CUSTOMER FASTAPI] Available services received:",
+    servicesData.length
+  );
+
+  setAvailableServices(servicesData);
+} catch (error) {
+  console.error(
+    "[CUSTOMER FASTAPI] Error fetching available services:",
+    error
+  );
+}
 
     // Fetch Add-ons (only active ones)
-    const { data: addonsData, error } = await supabase
-      .from("add_ons")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
+    
+try {
+  console.log("[CUSTOMER FASTAPI] Add-ons request started");
 
-    if (error) console.error("Error fetching addons:", error);
-    if (addonsData) setAddons(addonsData as AddOn[]);
-    setLoadingAddons(false);
+  const addonsData = await getCustomerAddons();
+
+  console.log(
+    "[CUSTOMER FASTAPI] Add-ons received:",
+    addonsData.length
+  );
+
+  
+setAddons(
+  addonsData.map((addon): AddOn => ({
+    ...addon,
+    duration: Number(addon.duration),
+    tax_percent:
+      addon.tax_percent == null
+        ? null
+        : Number(addon.tax_percent),
+    description: addon.description ?? undefined,
+  }))
+);
+
+} catch (error) {
+  console.error(
+    "[CUSTOMER FASTAPI] Error fetching add-ons:",
+    error
+  );
+} finally {
+  setLoadingAddons(false);
+}
   }, []);
 
-  const fetchServiceDetails = useCallback(async () => {
-    if (!service && serviceId) {
-      setLoadingService(true);
 
-      const fetchBySlug = async () => {
-        const { data, error } = await supabase
-          .from("services")
-          .select(
-            "id, slug, title, service_type, main_category_id, duration, price, original_price, discount_percent, discount_label, tax_percent, image, sort_order, description, gallery_images, work_includes, work_not_included"
-          )
-          .eq("slug", serviceId)
-          .maybeSingle();
-        return { data, error };
-      };
+const fetchServiceDetails = useCallback(async () => {
+  // A complete service object was already passed through navigation.
+  if (service || !serviceId) return;
 
-      const fetchById = async () => {
-        const { data, error } = await supabase
-          .from("services")
-          .select(
-            "id, slug, title, service_type, main_category_id, duration, price, original_price, discount_percent, discount_label, tax_percent, image, sort_order, description, gallery_images, work_includes, work_not_included"
-          )
-          .eq("id", serviceId)
-          .maybeSingle();
-        return { data, error };
-      };
+  setLoadingService(true);
 
-      // Try slug first
-      let { data, error } = await fetchBySlug();
+  try {
+    console.log(
+      "[CUSTOMER FASTAPI] Fetching service details:",
+      serviceId
+    );
 
-      // If no data (and no breaking error), try ID
-      if (!data) {
-        const fallback = await fetchById();
-        data = fallback.data;
-        error = fallback.error;
-      }
+    const data = await getCustomerServiceDetails(serviceId);
 
-      if (error) {
-        console.error("Error fetching service details:", error);
-      }
-      if (data) {
-        setService(data as Service);
-      }
-      setLoadingService(false);
-    }
-  }, [service, serviceId]);
+    setService(data);
+
+    console.log(
+      "[CUSTOMER FASTAPI] Service details received:",
+      data.title
+    );
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Error fetching service details:",
+      error
+    );
+  } finally {
+    setLoadingService(false);
+  }
+}, [service, serviceId]);
+
 
   const fetchActiveOffer = useCallback(async (currentService: Service | null) => {
     if (!currentService) return;
@@ -364,11 +387,13 @@ export default function ServiceDetailScreen({ route }: Props) {
         const userId = session?.user?.id;
         
         if (userId && claim.userId === userId && claim.serviceId === currentService.id) {
-          const { data: profile } = await supabase
-            .from("profile")
-            .select("service_selected, promotional_banner_selected")
-            .eq("id", userId)
-            .maybeSingle();
+          let profile: any = null;
+          try {
+            const profResp = await getCustomerProfile();
+            profile = profResp?.data;
+          } catch (e) {
+            console.log("[ServiceDetail] Error fetching profile for promo check:", e);
+          }
 
           if (
             profile?.service_selected === currentService.id &&
@@ -382,12 +407,18 @@ export default function ServiceDetailScreen({ route }: Props) {
       }
 
       // 2. Fallback to generic offers
-      const { data: offerData } = await supabase
-        .from("offers")
-        .select("offer_percentage")
-        .eq("title", currentService.title)
-        .eq("is_offer_enabled", true)
-        .maybeSingle();
+      
+const offersData = await getCustomerOffers();
+
+console.log(
+  "[CUSTOMER FASTAPI] Service detail offers received:",
+  offersData.length
+);
+
+const offerData = offersData.find(
+  (offer) => offer.title === currentService.title
+);
+
 
       if (offerData && offerData.offer_percentage > 0) {
         setActiveOfferPercent(offerData.offer_percentage);

@@ -5935,6 +5935,22 @@ import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  checkPincodeServiceable,
+  getCustomerAppPopups,
+  getCustomerConsumedPromotionalBanners,
+  getCustomerHeroBanners,
+  getCustomerMainCategories,
+  getCustomerMyBookings,
+  getCustomerOffers,
+  getCustomerProfile,
+  getCustomerPromotionalBannerRelations,
+  getCustomerPromotionalBanners,
+  getCustomerServices,
+  updateCustomerProfile,
+} from "../lib/customerApi";
+
+
+import {
   ActivityIndicator,
   Alert,
   Clipboard,
@@ -6114,66 +6130,96 @@ export default function HomeScreen({ navigation }: any) {
     }
   }, []);
 
-  const handleGoToSignupService = useCallback(async () => {
-    setShowSignupOfferPopup(false);
-    if (!signupOfferInfo) return;
+  
+const handleGoToSignupService = useCallback(async () => {
+  setShowSignupOfferPopup(false);
 
-    // Search in loaded services list
-    let matchingSvc = services.find(
-      (s) =>
-        (signupOfferInfo.id && s.id === signupOfferInfo.id) ||
-        (signupOfferInfo.title && s.title?.toLowerCase().trim() === signupOfferInfo.title?.toLowerCase().trim())
+  if (!signupOfferInfo) return;
+
+  const isMatchingService = (s: {
+    id: string;
+    title?: string | null;
+  }) =>
+    (Boolean(signupOfferInfo.id) &&
+      s.id === signupOfferInfo.id) ||
+    (Boolean(signupOfferInfo.title) &&
+      s.title?.toLowerCase().trim() ===
+        signupOfferInfo.title?.toLowerCase().trim());
+
+  // Step 1: Search services already loaded into Home Screen state.
+  let matchingSvc = services.find(isMatchingService);
+
+  // Step 2: If not found, fetch services through FastAPI.
+  if (!matchingSvc) {
+    try {
+      console.log(
+        "[CUSTOMER FASTAPI] Looking up signup offer service"
+      );
+
+      const apiServices = await getCustomerServices();
+
+      matchingSvc = apiServices.find(isMatchingService);
+
+      console.log(
+        "[CUSTOMER FASTAPI] Signup offer service found:",
+        matchingSvc?.title ?? "Not found"
+      );
+    } catch (error) {
+      console.error(
+        "[CUSTOMER FASTAPI] Signup offer service lookup failed:",
+        error
+      );
+    }
+  }
+
+  // Step 3: Preserve existing navigation and fallback behavior.
+  if (matchingSvc) {
+    navigation.navigate("ServiceDetail", {
+      service: matchingSvc,
+    });
+  } else {
+    showToast(
+      "40% OFF discount saved! Browse services to select your booking.",
+      "info"
     );
+  }
+}, [signupOfferInfo, services, navigation, showToast]);
 
-    // If not found in memory, query database directly
-    if (!matchingSvc) {
-      try {
-        let query = supabase.from("services").select("*");
-        if (signupOfferInfo.id) {
-          query = query.eq("id", signupOfferInfo.id);
-        } else if (signupOfferInfo.title) {
-          query = query.eq("title", signupOfferInfo.title);
-        }
-        const { data } = await query.maybeSingle();
-        if (data) matchingSvc = data;
-      } catch (e) {
-        console.log("Error querying service for signup offer:", e);
-      }
-    }
-
-    if (matchingSvc) {
-      navigation.navigate("ServiceDetail", { service: matchingSvc });
-    } else {
-      showToast("40% OFF discount saved! Browse services to select your booking.", "info");
-    }
-  }, [signupOfferInfo, services, navigation, showToast]);
 
   // ✅ Category Sheet state
   const [categorySheetVisible, setCategorySheetVisible] = useState(false);
   const [selectedMainCategoryForSheet, setSelectedMainCategoryForSheet] = useState<MainCategory | null>(null);
   const isFocused = useIsFocused();
 
-  const fetchServices = useCallback(async () => {
-    const { data, error } = await supabase.from("services").select("*");
+  
+const fetchServices = useCallback(async () => {
+  try {
+    console.log("[CUSTOMER FASTAPI] Home services request started");
 
-    if (error) {
-      console.log("Supabase error:", error);
-      return;
-    }
+    // Fetch services through Python FastAPI
+    let serviceList = await getCustomerServices();
 
-    let serviceList = data || [];
+    console.log(
+      "[CUSTOMER FASTAPI] Home services received:",
+      serviceList.length
+    );
 
-    // ✅ Fetch active offers
-    const { data: offersData } = await supabase
-      .from("offers")
-      .select("title, offer_percentage")
-      .eq("is_offer_enabled", true);
+    // Keep existing Supabase offers logic unchanged
+    const offersData = await getCustomerOffers();
 
+console.log(
+  "[CUSTOMER FASTAPI] Home offers received:",
+  offersData.length
+);
+
+
+    // Apply existing promotional discounts
     if (offersData && offersData.length > 0) {
       serviceList = serviceList.map((svc: any) => {
         const matchingOffer = offersData.find(
           (o) => o.title.toLowerCase() === svc.title.toLowerCase()
         );
+
         if (matchingOffer && matchingOffer.offer_percentage > 0) {
           return {
             ...svc,
@@ -6181,27 +6227,43 @@ export default function HomeScreen({ navigation }: any) {
             discount_percent: matchingOffer.offer_percentage,
           };
         }
+
         return svc;
       });
     }
 
+    // Update existing Home Screen state
     setServices(serviceList);
-  }, []);
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Home services request failed:",
+      error
+    );
+  }
+}, []);
+;
 
-  const fetchMainCategories = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("main_categories")
-      .select("*")
-      .order("sort_order", { ascending: true });
+  
+const fetchMainCategories = useCallback(async () => {
+  try {
+    console.log("[CUSTOMER FASTAPI] Main categories request started");
 
-    if (error) {
-      console.log("Main Categories error:", error);
-      return;
-    }
-    setMainCategories(data || []);
-    // Optional: Set the first one as active by default if you want
-    // if (data && data.length > 0) setActiveMainCategory(data[0].id);
-  }, []);
+    const categories = await getCustomerMainCategories();
+
+    console.log(
+      "[CUSTOMER FASTAPI] Main categories received:",
+      categories.length
+    );
+
+    setMainCategories(categories);
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Main categories request failed:",
+      error
+    );
+  }
+}, []);
+
 
   const handleBannerPress = useCallback(async (banner: PromotionalBanner) => {
     console.log("[PROMO] Banner tapped");
@@ -6221,24 +6283,30 @@ export default function HomeScreen({ navigation }: any) {
       }
 
       if (session?.user) {
-        // 1. Check if user already selected a service for this banner
-        const { data: userProfile } = await supabase
-          .from("profile")
-          .select("service_selected, promotional_banner_selected")
-          .eq("id", session.user.id)
-          .maybeSingle();
+        // 1. Check if user already selected a service for this banner via customer API
+        let userProfile: any = null;
+        try {
+          const profResp = await getCustomerProfile();
+          userProfile = profResp?.data;
+        } catch (e) {
+          console.log("[Banner] Error fetching customer profile:", e);
+        }
 
         const isSameBanner = userProfile?.promotional_banner_selected === banner.id;
         const hasSelectedService = !!userProfile?.service_selected;
 
         if (isSameBanner && hasSelectedService) {
           // Check if this specific selected booking is COMPLETED
-          const { data: promoBookings } = await supabase
-            .from("bookings")
-            .select("id, services, promotional_banner_id, work_status")
-            .eq("user_id", session.user.id)
-            .eq("promotional_banner_id", banner.id)
-            .eq("work_status", "COMPLETED");
+          let promoBookings: any[] = [];
+          try {
+            const myBookings = await getCustomerMyBookings();
+            promoBookings = (myBookings || []).filter((b: any) =>
+              b.promotional_banner_id === banner.id &&
+              String(b.work_status || "").trim().toUpperCase() === "COMPLETED"
+            );
+          } catch (e) {
+            console.log("[Banner] Error checking promo bookings:", e);
+          }
 
           let hasCompletedSelectedService = false;
           if (promoBookings && promoBookings.length > 0) {
@@ -6266,11 +6334,13 @@ export default function HomeScreen({ navigation }: any) {
           }
 
           // Active / Not completed case -> Fetch selected service
-          const { data: selectedService } = await supabase
-            .from("services")
-            .select("id, title")
-            .eq("id", userProfile.service_selected)
-            .maybeSingle();
+          let selectedService: any = null;
+          try {
+            const allSvcs = await getCustomerServices();
+            selectedService = (allSvcs || []).find((s: any) => s.id === userProfile.service_selected);
+          } catch (e) {
+            console.log("[Banner] Error fetching service details:", e);
+          }
 
           if (selectedService) {
             // Restore claimedOffer to ensure discount applies even if local storage was cleared
@@ -6300,10 +6370,7 @@ export default function HomeScreen({ navigation }: any) {
             return;
           } else {
             // Service missing/deleted, clear invalid selection
-            await supabase
-              .from("profile")
-              .update({ service_selected: null, promotional_banner_selected: null })
-              .eq("id", session.user.id);
+            await updateCustomerProfile({ service_selected: null, promotional_banner_selected: null });
           }
         } else {
           // Different banner or no selection
@@ -6430,27 +6497,19 @@ export default function HomeScreen({ navigation }: any) {
 
       let svcData = null;
 
+      const allSvcs = await getCustomerServices();
       if (banner.service_scope === "selected") {
-        const { data: svcRels } = await supabase
-          .from("promotional_banner_services")
-          .select("service_id")
-          .eq("banner_id", banner.id);
+        const rels = await getCustomerPromotionalBannerRelations();
+        const svcRels = (rels?.services || []).filter((r: any) => r.banner_id === banner.id);
 
         if (svcRels && svcRels.length > 0) {
-          const serviceIds = svcRels.map(r => r.service_id);
+          const serviceIds = svcRels.map((r: any) => r.service_id);
           console.log("[PROMO] Promotional service IDs:", serviceIds);
-          const { data: fetchedSvcData } = await supabase
-            .from("services")
-            .select("id, title")
-            .in("id", serviceIds);
-          svcData = fetchedSvcData;
+          svcData = (allSvcs || []).filter((s: any) => serviceIds.includes(s.id));
         }
       } else {
         // Fetch all services if scope is not 'selected'
-        const { data: fetchedSvcData } = await supabase
-          .from("services")
-          .select("id, title");
-        svcData = fetchedSvcData;
+        svcData = allSvcs;
       }
 
       if (svcData) {
@@ -6495,15 +6554,15 @@ export default function HomeScreen({ navigation }: any) {
 
 
       if (session?.user) {
-        // Check if this specific selected booking is COMPLETED
-        const { data: promoBookings, error: existingErr } = await supabase
-          .from("bookings")
-          .select("id, services, promotional_banner_id, work_status")
-          .eq("user_id", session.user.id)
-          .eq("promotional_banner_id", activePromoBanner.id)
-          .eq("work_status", "COMPLETED");
-
-        if (existingErr) {
+        // Check if this specific selected booking is COMPLETED via customer API
+        let promoBookings: any[] = [];
+        try {
+          const myBookings = await getCustomerMyBookings();
+          promoBookings = (myBookings || []).filter((b: any) =>
+            b.promotional_banner_id === activePromoBanner.id &&
+            String(b.work_status || "").trim().toUpperCase() === "COMPLETED"
+          );
+        } catch (existingErr) {
           console.error("[PROMO] reuse check error:", existingErr);
         }
 
@@ -6606,13 +6665,10 @@ export default function HomeScreen({ navigation }: any) {
       await setClaimedOffer(claimObject);
 
       if (session?.user?.id) {
-        await supabase
-          .from("profile")
-          .update({
-            promotional_banner_selected: activePromoBanner.id,
-            service_selected: selectedSvc.id,
-          })
-          .eq("id", session.user.id);
+        await updateCustomerProfile({
+          promotional_banner_selected: activePromoBanner.id,
+          service_selected: selectedSvc.id,
+        });
       }
 
       console.log("[COUPON STEP 8] Applying promotional banner:", claimObject);
@@ -6628,97 +6684,103 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  const fetchHeroBanners = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("hero_banners")
-      .select("image_path")
-      .eq("is_active", true)
-      .order("priority", { ascending: true });
+  
+const fetchHeroBanners = useCallback(async () => {
+  const fallbackBanners: ImageSourcePropType[] = [
+    require("../../assets/images/1.png"),
+    require("../../assets/images/2.png"),
+    require("../../assets/images/3.png"),
+  ];
 
-    const fallbackBanners: ImageSourcePropType[] = [
-      require("../../assets/images/1.png"),
-      require("../../assets/images/2.png"),
-      require("../../assets/images/3.png"),
-    ];
+  try {
+    console.log(
+      "[CUSTOMER FASTAPI] Hero banners request started"
+    );
 
-    if (error) {
-      setHeroBanners(fallbackBanners);
-      return;
-    }
+    const data = await getCustomerHeroBanners();
 
-    if (data && data.length > 0) {
-      const bannerUrls = data.map(
-        (banner) => ({ uri: `${SUPABASE_URL}/storage/v1/object/public/hero-images/${banner.image_path}` })
-      );
+    console.log(
+      "[CUSTOMER FASTAPI] Hero banners received:",
+      data.length
+    );
+
+    if (data.length > 0) {
+      const bannerUrls = data.map((banner) => ({
+        uri: `${SUPABASE_URL}/storage/v1/object/public/hero-images/${banner.image_path}`,
+      }));
+
       setHeroBanners(bannerUrls);
       return;
     }
+
     setHeroBanners(fallbackBanners);
-  }, []);
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Hero banners request failed:",
+      error
+    );
+
+    setHeroBanners(fallbackBanners);
+  }
+}, []);
+
 
 
   // ✅ Fetch promotional banners with eligibility checks
+ 
+const fetchPromotionalBanners = useCallback(async () => {
+  let data: PromotionalBanner[];
 
-  const fetchPromotionalBanners = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("promotional_banners")
-      .select("*")
-      .eq("is_active", true)
-      .eq("banner_type", "customer_app")
-      .order("display_order", { ascending: true });
+  try {
+    console.log(
+      "[CUSTOMER FASTAPI] Promotional banners request started"
+    );
 
-    if (error) {
-      console.log("Promotional Banners error:", error);
-      return;
-    }
+    const apiBanners = await getCustomerPromotionalBanners();
+
+    console.log(
+      "[CUSTOMER FASTAPI] Promotional banners received:",
+      apiBanners.length
+    );
+
+    data = apiBanners.map((banner): PromotionalBanner => ({
+      id: banner.id,
+      image_url: banner.image_url ?? "",
+      is_active: banner.is_active,
+      display_order: banner.display_order,
+      start_date: banner.start_date,
+      end_date: banner.end_date,
+      offer_percentage: banner.offer_percentage ?? undefined,
+      service_scope: banner.service_scope ?? undefined,
+      customer_type: banner.customer_type ?? undefined,
+      pincode_scope: banner.pincode_scope ?? undefined,
+    }));
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Promotional banners request failed:",
+      error
+    );
+    return;
+  }
+
+
 
     if (data) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         let userId = session?.user?.id;
 
-        // ✅ INJECT LEGACY ID CATCH-ALL LOOKUP HERE
-        if (session?.user) {
-          const rawPhone = session.user.phone || session.user.user_metadata?.phone_number || "";
-          const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
-
-          if (cleanPhone) {
-            const { data: legacyProfile } = await supabase
-              .from("profile")
-              .select("id")
-              .ilike("phone", `%${cleanPhone}`)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (legacyProfile && legacyProfile.id) {
-              userId = legacyProfile.id; // Override OTP ID with Legacy ID
-            }
-          }
-        }
-
-        // ✅ Fetch banner IDs the user has already CONSUMED using the Legacy ID.
+        // Fetch banner IDs the user has already CONSUMED via backend customer API
         const consumedBannerIds = new Set<string>();
-        if (userId) {
-          const { data: usedRows, error: usedError } = await supabase
-            .from("bookings")
-            .select("promotional_banner_id, work_status")
-            .eq("user_id", userId) // <-- Now correctly searches legacy history!
-            .not("promotional_banner_id", "is", null);
-
-          console.log("[Banner] raw used rows:", usedRows, "err:", usedError);
-
-          if (!usedError && usedRows) {
-            usedRows.forEach((row: any) => {
-              const ws = String(row.work_status || "").trim().toUpperCase();
-              if (ws === "COMPLETED" && row.promotional_banner_id) {
-                consumedBannerIds.add(row.promotional_banner_id);
-              }
-            });
+        if (session?.user) {
+          try {
+            const consumedList = await getCustomerConsumedPromotionalBanners();
+            (consumedList || []).forEach(id => consumedBannerIds.add(id));
+          } catch (usedError) {
+            console.log("[Banner] error fetching consumed banners:", usedError);
           }
         }
 
-        // ... (Keep the rest of your location checks and banner filtering exactly the same)
         console.log("[Banner] consumedBannerIds:", Array.from(consumedBannerIds));
 
         let customerPincode: string | null = null;
@@ -6731,22 +6793,24 @@ export default function HomeScreen({ navigation }: any) {
           }
 
           if (customerPincode) {
-            const { data: hubData } = await supabase
-              .from("hub_locations")
-              .select("id")
-              .eq("pincode", customerPincode);
-
-            if (hubData) {
-              customerHubIds = hubData.map(h => h.id);
+            const pinCheck = await checkPincodeServiceable(customerPincode);
+            if (pinCheck && pinCheck.locations) {
+              customerHubIds = pinCheck.locations.map((h: any) => h.id || h.location_id);
             }
           }
         } catch (e) {
           console.log("Error resolving customer location:", e);
         }
 
-        const { data: bannerLocations } = await supabase
-          .from("promotional_banner_locations")
-          .select("banner_id, location_id");
+        let bannerLocations: any[] = [];
+        let bannerServices: any[] = [];
+        try {
+          const rels = await getCustomerPromotionalBannerRelations();
+          bannerLocations = rels?.locations || [];
+          bannerServices = rels?.services || [];
+        } catch (relError) {
+          console.log("Error fetching promotional banner relations:", relError);
+        }
 
         const bannerLocMap: Record<string, string[]> = {};
         if (bannerLocations) {
@@ -6757,10 +6821,6 @@ export default function HomeScreen({ navigation }: any) {
             bannerLocMap[bl.banner_id].push(bl.location_id);
           });
         }
-
-        const { data: bannerServices } = await supabase
-          .from("promotional_banner_services")
-          .select("banner_id, service_id");
 
         const bannerSvcMap: Record<string, string[]> = {};
         if (bannerServices) {
@@ -6879,27 +6939,55 @@ export default function HomeScreen({ navigation }: any) {
           );
           return finalEligible;
         });
-        console.log("================================");
-        setPromotionalBanners(eligibleBanners);
-      } catch (err) {
-        console.error("Error evaluating banner eligibility:", err);
-        setPromotionalBanners(data);
-      }
+
+
+       
+console.log("================================");
+setPromotionalBanners(eligibleBanners);
+
+} catch (err) {
+  console.error("Error evaluating banner eligibility:", err);
+
+  
+setPromotionalBanners(data);
+
+}
+
+
+
     }
   }, []);
 
   const fetchPopups = useCallback(async () => {
     if (hasShownPopupThisSession) return;
 
-    const { data: popupData } = await supabase
-      .from("app_popups")
-      .select("*")
-      .eq("is_active", true);
+    const popupData = await getCustomerAppPopups().catch((error) => {
+  console.error(
+    "[CUSTOMER FASTAPI] App popups request failed:",
+    error
+  );
+  return [];
+});
 
-    const { data: offersData } = await supabase
-      .from("offers")
-      .select("*")
-      .eq("is_offer_enabled", true);
+console.log(
+  "[CUSTOMER FASTAPI] App popups received:",
+  popupData.length
+);
+
+    
+const offersData = await getCustomerOffers().catch((error) => {
+  console.error(
+    "[CUSTOMER FASTAPI] Popup offers request failed:",
+    error
+  );
+  return [];
+});
+
+console.log(
+  "[CUSTOMER FASTAPI] Popup offers received:",
+  offersData.length
+);
+
 
     if (popupData && popupData.length > 0) {
       setAppPopups(popupData);
@@ -6924,7 +7012,12 @@ export default function HomeScreen({ navigation }: any) {
     const loadAll = async () => {
       try {
         await Promise.all([fetchMainCategories(), fetchServices()]);
-        await Promise.all([fetchHeroBanners(), fetchPromotionalBanners(), fetchPopups()]);
+
+        await Promise.all([
+  fetchHeroBanners(),
+  fetchPopups(),
+]);
+        
         await checkWelcomeReward();
         await checkSignupOfferReward();
       } catch (err) {
@@ -6940,7 +7033,14 @@ export default function HomeScreen({ navigation }: any) {
     });
 
     return () => interactionPromise.cancel();
-  }, [fetchServices, fetchHeroBanners, fetchPromotionalBanners, fetchPopups, fetchMainCategories, checkWelcomeReward, checkSignupOfferReward]);
+  }, [
+  fetchServices,
+  fetchHeroBanners,
+  fetchPopups,
+  fetchMainCategories,
+  checkWelcomeReward,
+  checkSignupOfferReward
+]);
 
 
   // 👇👇👇 ADD THE FOCUS BLOCK HERE 👇👇👇

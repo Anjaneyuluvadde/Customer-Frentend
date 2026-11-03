@@ -29,6 +29,7 @@
 // import { useTheme } from "../context/ThemeContext";
 // import { useNotification } from "../hooks/useNotification";
 // import { supabase } from "../lib/supabase";
+import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
 // import { COLORS } from "../theme/colors";
 // import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 // import { generateReferralCode } from "../utils/referralUtils";
@@ -909,6 +910,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNotification } from "../hooks/useNotification";
 import { supabase } from "../lib/supabase";
+// import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
 import { COLORS } from "../theme/colors";
 // import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 import { isTempEmail } from "../utils/authUtils";
@@ -1018,62 +1020,15 @@ export default function ProfileScreen() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      // 1. Extract the phone number for the catch-all search
-      const rawPhone = user.phone || user.user_metadata?.phone_number || "";
-      const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
-
-      let profileData = null;
-
-      // 2. CATCH-ALL SEARCH: Find the profile by phone number first
-      if (cleanPhone) {
-        const { data: phoneData } = await supabase
-          .from("profile")
-          .select("*")
-          .ilike("phone", `%${cleanPhone}`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        profileData = phoneData;
-      }
-
-      // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
-      if (!profileData) {
-        const { data: idData } = await supabase
-          .from("profile")
-          .select("*")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        profileData = idData;
-      }
+      const result = await getCustomerProfile();
+      const profileData = result.profile;
 
       if (profileData) {
-        // CRITICAL: Set the active ID to the Profile's true legacy ID. 
-        // This ensures edits and wallet checks map to the correct legacy data!
-        const activeProfileId = profileData.id;
-        setUserId(activeProfileId);
+        setUserId(result.resolved_user_id || profileData.id);
+        setReferralCode(profileData.referral_code || "");
+        setWalletBalance(result.wallet_balance || 0);
 
-        let currentCode = profileData.referral_code;
-
-        // If no referral code exists, generate and save one
-        if (!currentCode) {
-          currentCode = generateReferralCode(profileData.full_name || user.email || "User");
-          await supabase
-            .from("profile")
-            .update({ referral_code: currentCode })
-            .eq("id", activeProfileId);
-        }
-
-        setReferralCode(currentCode);
-
-        const dbEmail = profileData.email || user.email || "";
+        const dbEmail = profileData.email || "";
         const finalEmail = isTempEmail(dbEmail) ? "" : dbEmail;
 
         setFormData({
@@ -1083,30 +1038,9 @@ export default function ProfileScreen() {
           address: profileData.address || "",
           pincode: profileData.pincode || "",
         });
-
-        // Fetch Wallet Balance using the true legacy ID
-        const { data: walletData } = await supabase
-          .from("wallet")
-          .select("balance")
-          .eq("user_id", activeProfileId)
-          .maybeSingle();
-
-        if (walletData) {
-          setWalletBalance(walletData.balance || 0);
-        } else {
-          // Initialize wallet if it doesn't exist
-          await supabase.from("wallet").insert({ user_id: activeProfileId, balance: 0 });
-          setWalletBalance(0);
-        }
       } else {
-        // Brand new user scenario
-        setUserId(user.id);
-        const fallbackEmail = user.email || "";
-        const finalFallback = isTempEmail(fallbackEmail) ? "" : fallbackEmail;
-        setFormData((p) => ({
-          ...p,
-          email: finalFallback,
-        }));
+        setUserId(result.resolved_user_id);
+        setWalletBalance(result.wallet_balance || 0);
       }
     } catch {
       showAlert({
@@ -1142,32 +1076,24 @@ export default function ProfileScreen() {
     setSaving(true);
 
     try {
-      // Clean the phone to 10 digits
       const cleanPhone = formData.phone.replace(/\D/g, "").slice(-10);
       const formattedPhone = cleanPhone ? `+91${cleanPhone}` : null;
 
-      // Update profile table
-      const { error } = await supabase
-        .from("profile")
-        .update({
-          full_name: formData.full_name.trim(),
-          email: formData.email.trim(),
-          phone: cleanPhone || null,
-          address: formData.address.trim(),
-          pincode: formData.pincode.trim(),
-        })
-        .eq("id", userId);
+      await updateCustomerProfile({
+        full_name: formData.full_name.trim(),
+        email: formData.email.trim(),
+        phone: cleanPhone || undefined,
+        address: formData.address.trim(),
+        pincode: formData.pincode.trim(),
+      });
 
-      // Also sync phone to Supabase Auth metadata if provided
       if (formattedPhone) {
-        await supabase.auth.updateUser({
-          data: {
-            phone_number: formattedPhone
-          }
-        });
+        try {
+          await supabase.auth.updateUser({
+            data: { phone_number: formattedPhone },
+          });
+        } catch (_) {}
       }
-
-      if (error) throw error;
 
       showToast(t("notifications.profileUpdated"), "success");
       setIsEditing(false);

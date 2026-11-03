@@ -14,7 +14,7 @@ import Header from "../components/Header";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
-import { supabase } from "../lib/supabase";
+import { getCustomerMyBookings } from "../lib/customerApi";
 
 type TabType = "current" | "completed";
 
@@ -39,49 +39,19 @@ export default function MyBookingsScreen() {
   };
 
   const fetchMyBookings = useCallback(async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    setLoading(true);
+    try {
+      const data = await getCustomerMyBookings();
+      setBookings(data || []);
+    } catch (error) {
+      console.error(
+        "[CUSTOMER FASTAPI] Error fetching my bookings:",
+        error instanceof Error ? error.message : error
+      );
+      setBookings([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // 1. Extract the phone number for the catch-all search
-    const rawPhone = user.phone || user.user_metadata?.phone_number || "";
-    const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
-
-    let targetUserId = user.id; // Default to current auth session ID
-
-    // 2. CATCH-ALL SEARCH: Find the legacy profile ID using the phone number
-    if (cleanPhone) {
-      const { data: phoneData } = await supabase
-        .from("profile")
-        .select("id") // We only need the ID to map the bookings
-        .ilike("phone", `%${cleanPhone}`)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // If a legacy profile is found, use ITS ID to look up the bookings
-      if (phoneData && phoneData.id) {
-        targetUserId = phoneData.id;
-      }
-    }
-
-    // 3. Fetch bookings using the correct ID (Legacy if found, otherwise New)
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("user_id", targetUserId)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setBookings(data);
-    }
-
-    setLoading(false);
   }, []);
 
   useFocusEffect(

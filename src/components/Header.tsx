@@ -11,6 +11,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { supabase } from "../lib/supabase";
+import { getCustomerProfile } from "../lib/customerApi";
 import LocationService from "../services/LocationService";
 
 type HeaderProps = {
@@ -194,37 +195,20 @@ export default function Header({ isCurved = false }: HeaderProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Extract the phone number for the catch-all search
-      const rawPhone = user.phone || user.user_metadata?.phone_number || "";
-      const cleanPhone = rawPhone.replace(/\D/g, "").slice(-10);
-
       let profileData = null;
-
-      // 2. CATCH-ALL SEARCH: Find the profile by phone number first
-      if (cleanPhone) {
-        const { data: phoneData } = await supabase
-          .from('profile')
-          .select('full_name, email')
-          .ilike('phone', `%${cleanPhone}`)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        profileData = phoneData;
+      try {
+        const resp = await getCustomerProfile();
+        if (resp && resp.data) {
+          profileData = {
+            full_name: resp.data.full_name,
+            email: resp.data.email,
+          };
+        }
+      } catch (err) {
+        console.error('Error fetching profile for header via customer API:', err);
       }
 
-      // 3. FALLBACK: If phone search yields nothing, search by Auth UUID
-      if (!profileData) {
-        const { data: idData } = await supabase
-          .from('profile')
-          .select('full_name, email')
-          .eq('id', userId)
-          .maybeSingle();
-
-        profileData = idData;
-      }
-
-      // 4. Set the profile so the name renders!
+      // Set the profile so the name renders!
       if (profileData) {
         setProfile(profileData);
       }
@@ -440,6 +424,7 @@ const styles = StyleSheet.create({
 // import { useTheme } from "../context/ThemeContext";
 // import { useAuthGuard } from "../hooks/useAuthGuard";
 // import { supabase } from "../lib/supabase";
+// import { getCustomerProfile } from "../lib/customerApi";
 // import LocationService from "../services/LocationService";
 
 // type HeaderProps = {

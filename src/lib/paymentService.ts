@@ -166,7 +166,7 @@
  */
 
 import RazorpayCheckout from "react-native-razorpay";
-import { invokeFunction } from "./backendClient"; // ✅ Use existing supabase client
+import { createCustomerRazorpayOrder, verifyCustomerRazorpayPayment } from "./customerApi"; // ✅ Use existing supabase client
 
 const RAZORPAY_KEY_ID = (
   process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID ||
@@ -213,19 +213,8 @@ export async function processPayment(
     console.log("🔵 Booking ID:", bookingId);
     console.log("🔵 Amount (INR):", amount);
 
-    // ✅ Use invokeFunction instead of manual fetch
-    const { data: orderData, error: orderError } = await invokeFunction("create-razorpay-order", {
-      body: {
-        booking_id: bookingId,
-        amount: amount, // INR (Edge Function handles conversion to paise)
-        payment_type: paymentType,
-      },
-    });
-
-    if (orderError) {
-      console.error("❌ Order creation failed:", orderError);
-      throw new Error(orderError.message || "Failed to create order");
-    }
+    // ✅ Call Customer Backend API
+    const orderData = await createCustomerRazorpayOrder(amount, bookingId, paymentType);
 
     console.log("🔵 Order Data:", JSON.stringify(orderData, null, 2));
 
@@ -268,17 +257,15 @@ export async function processPayment(
 
     /* ================= 3️⃣ VERIFY PAYMENT ================= */
 
-    const { data: verifyData, error: verifyError } = await invokeFunction("verify-payment", {
-      body: {
-        razorpay_order_id: payment.razorpay_order_id,
-        razorpay_payment_id: payment.razorpay_payment_id,
-        razorpay_signature: payment.razorpay_signature,
-        booking_id: bookingId,
-        payment_type: paymentType,
-      },
+    const verifyData = await verifyCustomerRazorpayPayment({
+      razorpay_order_id: payment.razorpay_order_id,
+      razorpay_payment_id: payment.razorpay_payment_id,
+      razorpay_signature: payment.razorpay_signature,
+      booking_id: bookingId,
+      payment_type: paymentType,
     });
 
-    if (verifyError || !verifyData?.success) {
+    if (!verifyData?.success) {
       throw new Error("Payment verification failed");
     }
 

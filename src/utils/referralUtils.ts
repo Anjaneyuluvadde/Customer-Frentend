@@ -1,4 +1,4 @@
-import { supabase } from "../lib/supabase";
+import { validateReferralCode as apiValidateReferralCode } from "../lib/customerApi";
 
 /**
  * Generates a random referral code
@@ -7,7 +7,6 @@ import { supabase } from "../lib/supabase";
 export const generateReferralCode = (name: string): string => {
   const prefix = "NEAT";
   const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-  // We can also use parts of the name if preferred, e.g., NEAT-JOHN-A1B2
   const namePart = name ? name.split(' ')[0].substring(0, 3).toUpperCase() : "";
   return `${prefix}-${namePart}${randomStr}`;
 };
@@ -17,16 +16,10 @@ export const generateReferralCode = (name: string): string => {
  */
 export const validateReferralCode = async (code: string): Promise<string | null> => {
   if (!code) return null;
-  
-  try {
-    const { data, error } = await supabase
-      .from("profile")
-      .select("id")
-      .eq("referral_code", code.trim().toUpperCase())
-      .single();
 
-    if (error || !data) return null;
-    return data.id;
+  try {
+    const res = await apiValidateReferralCode(code.trim().toUpperCase());
+    return res.valid && res.referrer_id ? res.referrer_id : null;
   } catch (error) {
     console.error("Error validating referral code:", error);
     return null;

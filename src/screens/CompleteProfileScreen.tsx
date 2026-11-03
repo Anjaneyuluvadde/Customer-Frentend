@@ -8,6 +8,7 @@
 // } from "react-native";
 // import { SafeAreaView } from "react-native-safe-area-context";
 // import { supabase } from "../lib/supabase";
+import { updateCustomerProfile, saveCustomerAddress } from "../lib/customerApi";
 // import { COLORS } from "../theme/colors";
 
 // export default function CompleteProfileScreen() {
@@ -179,6 +180,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+// import { updateCustomerProfile, saveCustomerAddress } from "../lib/customerApi";
 import LocationService from "../services/LocationService";
 import { COLORS } from "../theme/colors";
 
@@ -309,42 +311,24 @@ export default function CompleteProfileScreen() {
 
         setLoading(true);
         try {
-            // 1. Save Profile (Upsert)
-            const { error: profileError } = await supabase
-                .from("profile")
-                .upsert({
-                    id: userId,
-                    full_name: fullName,
-                    email: email,
-                    phone: userPhone,
-                    address: address,
-                });
+            await updateCustomerProfile({
+                full_name: fullName.trim(),
+                email: email.trim(),
+                phone: userPhone || undefined,
+                address: address.trim(),
+                pincode: pincode.trim(),
+            });
 
-            if (profileError) throw profileError;
-
-            // 2. Clear out any existing "Home" addresses just in case
-            await supabase.from("user_addresses").delete().eq("user_id", userId).eq("tag", "Home");
-
-            // 3. Extract House No from the start of the address
             const derivedHouseNo = address.includes(",") ? address.split(",")[0].trim() : "N/A";
 
-            // 4. Save to user_addresses
-            const { error: addressError } = await supabase
-                .from("user_addresses")
-                .insert({
-                    user_id: userId,
-                    tag: "Home",
-                    house_no: derivedHouseNo,
-                    full_address: address,
-                    latitude: latitude,
-                    longitude: longitude,
-                    pincode: pincode
-                });
-
-            if (addressError) console.error("Address save failed:", addressError);
-
-            // 5. Create Wallet (ignore error if it already exists)
-            await supabase.from("wallet").insert({ user_id: userId, balance: 0 });
+            await saveCustomerAddress({
+                tag: "Home",
+                house_no: derivedHouseNo,
+                full_address: address.trim(),
+                latitude: latitude || undefined,
+                longitude: longitude || undefined,
+                pincode: pincode.trim(),
+            });
 
             // 6. Update local app state
             await LocationService.setSelectedLocation({
@@ -363,7 +347,10 @@ export default function CompleteProfileScreen() {
 
         } catch (error: any) {
             console.error("Save Profile Error:", error);
-            Alert.alert("Database Error", error.message);
+            Alert.alert(
+                "Unable to Save Profile",
+                error.message || "Failed to connect to backend server. Please check network/server status."
+            );
         } finally {
             setLoading(false);
         }

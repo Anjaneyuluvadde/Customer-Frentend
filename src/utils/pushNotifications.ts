@@ -1,3 +1,4 @@
+import { saveCustomerPushToken, removeCustomerPushToken } from "../lib/customerApi";
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -63,35 +64,8 @@ export async function savePushTokenToSupabase(userId: string, token: string) {
   if (!userId || !token) return;
 
   try {
-    // 1. Aggressively remove this token from ANY other users first.
-    // This ensures that this device token is "stolen" from any previous accounts
-    // and is now exclusively linked to the current user.
-    const { error: deleteError } = await supabase
-      .from('push_tokens')
-      .delete()
-      .eq('token', token);
-
-    if (deleteError) {
-      console.error('Error clearing old tokens:', deleteError);
-    }
-
-    // 2. Upsert the token for the current user.
-    // We use onConflict 'user_id' so that if this user already has a token, it gets updated.
-    const { error } = await supabase
-      .from('push_tokens')
-      .upsert({
-        user_id: userId,
-        token: token,
-        platform: Platform.OS,
-      }, {
-        onConflict: 'user_id'
-      });
-
-    if (error) {
-      console.error('Error saving push token to Supabase:', error);
-    } else {
-      console.log('Push token successfully locked to user:', userId);
-    }
+    await saveCustomerPushToken(token, Platform.OS || "android");
+    console.log('Push token successfully saved via customer backend API');
   } catch (err) {
     console.error('Unexpected error saving push token:', err);
   }
@@ -101,16 +75,8 @@ export async function removePushTokenFromSupabase(token: string) {
   if (!token) return;
 
   try {
-    const { error } = await supabase
-      .from('push_tokens')
-      .delete()
-      .eq('token', token);
-
-    if (error) {
-      console.error('Error removing push token from Supabase:', error);
-    } else {
-      console.log('Push token successfully removed from Supabase');
-    }
+    await removeCustomerPushToken(token);
+    console.log('Push token successfully removed via customer backend API');
   } catch (err) {
     console.error('Unexpected error removing push token:', err);
   }

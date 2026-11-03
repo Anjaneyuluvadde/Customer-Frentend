@@ -17,7 +17,8 @@
 
 // import { COLORS } from "../theme/colors";
 // import NeatifyLogo from "../../assets/images/neatifylogo.png";
-// import { supabase } from "../lib/supabase";
+// // import { supabase } from "../lib/supabase";
+import { getCustomerHubLocations } from "../lib/customerApi";
 // import LocationService, { LocationResult } from "../services/LocationService";
 
 // export default function ComingSoonScreen() {
@@ -390,7 +391,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { COLORS } from "../theme/colors";
 import NeatifyLogo from "../../assets/images/neatifylogo.png";
-import { supabase } from "../lib/supabase";
+// import { supabase } from "../lib/supabase";
+// import { getCustomerHubLocations } from "../lib/customerApi";
 import LocationService from "../services/LocationService";
 
 export default function ComingSoonScreen() {
@@ -424,14 +426,12 @@ export default function ComingSoonScreen() {
       try {
         setLoadingLocations(true);
 
-        const { data, error } = await supabase
-          .from("hub_locations")
-          .select("id, hub_name, location_name, pincode")
-          .eq("is_active", true);
-
-        if (error) {
+        let data: any[] = [];
+        try {
+          data = await getCustomerHubLocations();
+        } catch (error) {
           console.error(
-            "❌ Error fetching service locations:",
+            "❌ Error fetching service locations via customer API:",
             error
           );
           return;

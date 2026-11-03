@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
 import { useAuthGuard } from "../hooks/useAuthGuard";
 import { supabase } from "../lib/supabase";
+import { getCustomerProfile } from "../lib/customerApi";
 import { COLORS } from "../theme/colors";
 import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 
@@ -40,17 +41,15 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profile')
-        .select('full_name, email')
-        .eq('id', userId)
-        .single();
-
-      if (data) {
-        setProfile(data);
+      const resp = await getCustomerProfile();
+      if (resp && resp.data) {
+        setProfile({
+          full_name: resp.data.full_name,
+          email: resp.data.email,
+        });
       }
     } catch (error) {
-      console.error('Error fetching profile for drawer:', error);
+      console.error('Error fetching profile for drawer via customer API:', error);
     }
   };
 

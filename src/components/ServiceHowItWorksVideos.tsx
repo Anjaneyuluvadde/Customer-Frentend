@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { getServiceHowItWorksVideos } from '../lib/customerApi';
 import { COLORS } from '../theme/colors';
 
 const CARD_WIDTH = 140;
@@ -47,20 +47,10 @@ export default function ServiceHowItWorksVideos({ serviceId }: ServiceHowItWorks
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("service_how_it_works_videos")
-        .select("*")
-        .eq("service_id", serviceId)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      if (error) {
-        console.error("[ServiceHowItWorksVideos] Error fetching videos:", error);
-        return;
-      }
+      const data = await getServiceHowItWorksVideos(serviceId);
       setVideos(data || []);
     } catch (error) {
-      console.error("[ServiceHowItWorksVideos] Exception fetching videos:", error);
+      console.error("[ServiceHowItWorksVideos] Exception fetching videos via customer API:", error);
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,15 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import { supabase } from "../lib/supabase";
+import {
+  addCustomerCartItem,
+  clearCustomerCart,
+  getCustomerCart,
+  removeCustomerCartItem,
+} from "../lib/customerApi";
 import { Service } from "../types/service";
 
 export type CartItem = {
-  id: string; // ✅ cart row id (Supabase row id)
+  id: string;
   service_id: string;
   title: string;
   duration: string;
@@ -18,10 +23,10 @@ type CartContextType = {
 
   fetchCart: () => Promise<void>;
 
-  // ✅ returns true if added successfully
+  // Returns true if added successfully
   addToCart: (service: Service) => Promise<boolean>;
 
-  // ✅ delete by service_id
+  // Delete by service_id
   removeFromCart: (service_id: string) => Promise<void>;
 
   clearCart: () => Promise<void>;
@@ -41,89 +46,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const fetchCart = async () => {
     setLoadingCart(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setCartItems([]);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select("id, service_id, title, duration, price, image")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
+      const data = await getCustomerCart();
       setCartItems((data as any) || []);
     } catch (err: any) {
-      console.log("fetchCart error:", err.message);
+      console.log("[CUSTOMER FASTAPI] fetchCart error:", err.message);
+      setCartItems([]);
     } finally {
       setLoadingCart(false);
     }
   };
 
   // ======================================================
-  // ADD TO CART (NO ALERT HERE ✅)
+  // ADD TO CART
   // ======================================================
   const addToCart = async (service: Service) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("Please login to add items to cart.");
-      }
-
-      const { error } = await supabase.from("cart_items").insert({
-        user_id: user.id,
+      await addCustomerCartItem({
         service_id: service.id,
         title: service.title,
-        duration: service.duration,
-        price: service.price,
+        duration: String(service.duration || ""),
+        price: String(service.price || ""),
         image: service.image,
       });
-
-      if (error) {
-        // ✅ duplicate row unique constraint
-        if (error.code === "23505") {
-          throw new Error("Already in Cart");
-        }
-        throw error;
-      }
 
       await fetchCart();
       return true;
     } catch (err: any) {
+      console.error("[CUSTOMER FASTAPI] addToCart error:", err);
       throw err;
     }
   };
 
   // ======================================================
-  // REMOVE FROM CART (BY service_id ✅)
+  // REMOVE FROM CART (BY service_id)
   // ======================================================
   const removeFromCart = async (service_id: string) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("service_id", service_id);
-
-      if (error) throw error;
-
+      await removeCustomerCartItem(service_id);
       await fetchCart();
     } catch (err: any) {
+      console.error("[CUSTOMER FASTAPI] removeFromCart error:", err);
       throw err;
     }
   };
@@ -133,21 +95,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // ======================================================
   const clearCart = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      await fetchCart();
+      await clearCustomerCart();
+      setCartItems([]);
     } catch (err: any) {
+      console.error("[CUSTOMER FASTAPI] clearCart error:", err);
       throw err;
     }
   };
@@ -159,7 +110,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return cartItems.some((x) => x.service_id === service_id);
   };
 
-  // ✅ Auto fetch cart after app opens
+  // Auto fetch cart after app opens
   useEffect(() => {
     fetchCart();
   }, []);

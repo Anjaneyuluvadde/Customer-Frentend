@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ServiceCard from "../components/ServiceCard";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
-import { supabase } from "../lib/supabase";
+import { getCustomerServices } from "../lib/customerApi";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
 import { Service } from "../types/service";
@@ -33,21 +33,37 @@ export default function CategoryServicesScreen({ route }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchServices = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .eq("main_category_id", mainCategoryId)
-      .order("sort_order", { ascending: true });
+  
+const fetchServices = useCallback(async () => {
+  setLoading(true);
 
-    if (error) {
-      console.error("Error fetching services:", error);
-    } else {
-      setServices(data || []);
-    }
+  console.log(
+    "[CUSTOMER FASTAPI] CategoryServices opened:",
+    mainCategoryId
+  );
+
+  try {
+    const data = await getCustomerServices({
+      main_category_id: mainCategoryId,
+    });
+
+    console.log(
+      "[CUSTOMER FASTAPI] Category services received:",
+      data.length
+    );
+
+    setServices(data);
+  } catch (error) {
+    console.error(
+      "[CUSTOMER FASTAPI] Category services request failed:",
+      error
+    );
+    setServices([]);
+  } finally {
     setLoading(false);
-  }, [mainCategoryId]);
+  }
+}, [mainCategoryId]);
+
 
   useEffect(() => {
     fetchServices();
