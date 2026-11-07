@@ -1096,6 +1096,8 @@ export async function updateCustomerBookingPayment(
     payment_verified?: boolean;
     paid_amount?: number;
     remaining_amount?: number;
+    payment_plan?: string;
+    payment_type?: string;
   }
 ): Promise<any> {
   if (!API_BASE_URL) {
@@ -1420,7 +1422,14 @@ export async function sendCustomerAuthOtp(phone: string): Promise<any> {
     body: JSON.stringify({ phone }),
   });
 
-  const result = await response.json();
+  const rawText = await response.text();
+  let result: any;
+  try {
+    result = JSON.parse(rawText);
+  } catch {
+    throw new Error(`Server returned HTTP ${response.status}. Please check backend server status.`);
+  }
+
   if (!response.ok || !result.success) {
     throw new Error(result.detail || "Unable to send OTP. Please try again.");
   }
@@ -1442,7 +1451,14 @@ export async function verifyCustomerAuthOtp(phone: string, otp: string): Promise
     body: JSON.stringify({ phone, otp }),
   });
 
-  const result = await response.json();
+  const rawText = await response.text();
+  let result: any;
+  try {
+    result = JSON.parse(rawText);
+  } catch {
+    throw new Error(`Server returned HTTP ${response.status}. Please check backend server status.`);
+  }
+
   if (!response.ok || !result.success) {
     throw new Error(result.detail || "Invalid or expired OTP.");
   }

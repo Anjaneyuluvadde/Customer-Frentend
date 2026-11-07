@@ -1191,7 +1191,8 @@ export default function CheckoutScreen({ route }: Props) {
         razorpay_order_id: payment.orderId,
         razorpay_signature: payment.signature,
         payment_verified: true,
-        payment_status: "paid",
+        payment_status: paymentChoice === "partial" && partialConfig ? "partial" : "paid",
+        payment_plan: paymentChoice === "partial" && partialConfig ? "PARTIAL" : "FULL",
         paid_amount: paymentChoice === "partial" && partialConfig ? partialConfig.partialAmount : Number(grandTotal.toFixed(2)),
         remaining_amount: paymentChoice === "partial" && partialConfig ? (Number(grandTotal.toFixed(2)) - partialConfig.partialAmount) : 0,
       });

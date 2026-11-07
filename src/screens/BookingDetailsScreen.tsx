@@ -53,6 +53,18 @@ export default function BookingDetailsScreen({ route }: Props) {
   const navigation = useNavigation<any>();
   const bottomNavPadding = useBottomNavPadding();
 
+  // Staff Details State
+  const [staffName, setStaffName] = useState<string | null>(initialBooking?.assigned_staff_name || null);
+  const [staffPhone, setStaffPhone] = useState<string | null>(initialBooking?.assigned_staff_phone || null);
+
+  // When staff is assigned, cancel option must be hidden
+  const isStaffAssigned = Boolean(
+    booking?.assigned_staff_email ||
+    booking?.assigned_staff_id ||
+    booking?.assigned_staff_name ||
+    staffName
+  );
+
   // Review State
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [review, setReview] = useState<{ rating: number; comment: string } | null>(null);
@@ -183,13 +195,59 @@ export default function BookingDetailsScreen({ route }: Props) {
     loadChecklist();
   }, [booking.id]);
 
+  const handlePayRemainingAmount = async () => {
+    if (processingPayment) return;
+    const remaining = Number(booking?.remaining_amount || 0);
+    if (remaining <= 0) {
+      showToast("No remaining balance due", "info");
+      return;
+    }
+    setProcessingPayment(true);
+    try {
+      const payment = await processPayment(
+        remaining,
+        {
+          firstName: booking.customer_name?.split(' ')[0] || "",
+          lastName: booking.customer_name?.split(' ').slice(1).join(' ') || "",
+          email: booking.email || "",
+          phone: booking.customer_phone || booking.phone_number || "",
+          address: booking.full_address || "",
+          city: "",
+          region: "",
+          zip: ""
+        },
+        booking.id,
+        "REMAINING"
+      );
+      if (payment.success) {
+        showToast("Payment Successful!", "success");
+        setBooking((prev: any) => ({
+          ...prev,
+          remaining_amount: 0,
+          paid_amount: Number(prev.paid_amount || 0) + remaining,
+          payment_status: "paid"
+        }));
+        setTimeout(() => onRefresh(), 2000);
+      } else {
+        showAlert({ type: "error", title: "Payment Failed", message: "Payment could not be completed." });
+      }
+    } catch (err: any) {
+      showAlert({ type: "error", title: "Payment Failed", message: "An error occurred during payment." });
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
   const toggleChecklistItem = async (index: number) => {
     if (Number(booking?.remaining_amount || 0) > 0) {
-      showAlert({
-        type: "warning",
-        title: "Payment Required",
-        message: "Please pay the remaining amount before starting the checklist."
-      });
+      Alert.alert(
+        "Payment Required",
+        `Please pay the remaining amount of ₹${booking.remaining_amount} before checking off items.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: `Pay ₹${booking.remaining_amount}`, onPress: () => handlePayRemainingAmount() },
+        ]
+      );
       return;
     }
 
@@ -208,11 +266,14 @@ export default function BookingDetailsScreen({ route }: Props) {
 
   const handleCustomerSubmit = async () => {
     if (Number(booking?.remaining_amount || 0) > 0) {
-      showAlert({
-        type: "warning",
-        title: "Payment Required",
-        message: "Please pay the remaining amount before submitting the checklist."
-      });
+      Alert.alert(
+        "Payment Required",
+        `Please pay the remaining amount of ₹${booking.remaining_amount} before submitting the checklist.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: `Pay ₹${booking.remaining_amount}`, onPress: () => handlePayRemainingAmount() },
+        ]
+      );
       return;
     }
 
@@ -408,27 +469,29 @@ export default function BookingDetailsScreen({ route }: Props) {
     fetchCancellationFee();
   }, [services]);
 
-  // Check Cancellation Eligibility
+  // Check Cancellation Eligibility (Staff assignment closes cancellation)
   useEffect(() => {
     const checkEligibility = () => {
       let clientEligible = true;
       if (
-        ['COMPLETED', 'CANCELLED', 'UNDER_REVIEW']
-          .includes(normalizedWorkStatus)
+        ['COMPLETED', 'CANCELLED', 'UNDER_REVIEW'].includes(normalizedWorkStatus) ||
+        isStaffAssigned
       ) {
         clientEligible = false;
       }
       setIsEligibleToCancel(clientEligible);
     };
     checkEligibility();
-  }, [booking.work_status]);
+  }, [booking.work_status, isStaffAssigned]);
 
   const handleCancelBooking = async () => {
-    if (!isEligibleToCancel) {
+    if (!isEligibleToCancel || isStaffAssigned) {
       showAlert({
         type: "info",
-        title: t("notifications.cancellationClosed"),
-        message: "Cancellation is no longer available for this booking status."
+        title: isStaffAssigned ? "Cancellation Unavailable" : t("notifications.cancellationClosed"),
+        message: isStaffAssigned
+          ? "A service partner has already been assigned to this booking. Cancellations are not permitted after partner assignment."
+          : "Cancellation is no longer available for this booking status."
       });
       return;
     }
@@ -566,9 +629,6 @@ export default function BookingDetailsScreen({ route }: Props) {
 
   /* ================= STAFF DETAILS ================= */
 
-  const [staffName, setStaffName] = useState<string | null>(null);
-  const [staffPhone, setStaffPhone] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchStaffDetails = async () => {
       if (booking.assigned_staff_name) setStaffName(booking.assigned_staff_name);
@@ -576,7 +636,7 @@ export default function BookingDetailsScreen({ route }: Props) {
     };
 
     fetchStaffDetails();
-  }, [booking.assigned_staff_email]);
+  }, [booking.assigned_staff_email, booking.assigned_staff_name, booking.assigned_staff_phone]);
 
   // Pull to refresh handler
   const onRefresh = async () => {
@@ -586,7 +646,13 @@ export default function BookingDetailsScreen({ route }: Props) {
       if (freshBooking) {
         setBooking(freshBooking);
         const normStatus = String(freshBooking.work_status || "").trim().toUpperCase();
-        setIsEligibleToCancel(!['COMPLETED', 'CANCELLED'].includes(normStatus));
+        const hasStaff = Boolean(
+          freshBooking.assigned_staff_email ||
+          freshBooking.assigned_staff_id ||
+          freshBooking.assigned_staff_name ||
+          staff?.name
+        );
+        setIsEligibleToCancel(!['COMPLETED', 'CANCELLED', 'UNDER_REVIEW'].includes(normStatus) && !hasStaff);
       }
       if (staff) {
         if (staff.name) setStaffName(staff.name);
@@ -663,6 +729,11 @@ export default function BookingDetailsScreen({ route }: Props) {
               <View key={s.id || index} style={[styles.serviceRow, { borderBottomColor: theme.border }]}>
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <Text style={[styles.bold, { color: theme.text }]}>{s.title || s.service_name || 'Service'}</Text>
+                  {booking?.id ? (
+                    <Text style={{ color: theme.textLight, fontSize: 13, marginTop: 3, fontWeight: '500' }}>
+                      Booking ID: #{booking.id}
+                    </Text>
+                  ) : null}
                   <Text style={{ color: theme.textLight, marginTop: 2 }}>{s.duration || 'N/A'}</Text>
                 </View>
                 <Text style={{ fontWeight: "700", flexShrink: 0, color: theme.text }}>
@@ -715,43 +786,8 @@ export default function BookingDetailsScreen({ route }: Props) {
                 borderRadius: 8,
                 alignItems: 'center'
               }}
-              onPress={async () => {
-                if (processingPayment) return;
-                setProcessingPayment(true);
-                try {
-                  const payment = await processPayment(
-                    Number(booking.remaining_amount),
-                    {
-                      firstName: booking.customer_name?.split(' ')[0] || "",
-                      lastName: booking.customer_name?.split(' ').slice(1).join(' ') || "",
-                      email: booking.email || "",
-                      phone: booking.customer_phone || booking.phone_number || "",
-                      address: booking.full_address || "",
-                      city: "",
-                      region: "",
-                      zip: ""
-                    },
-                    booking.id,
-                    "REMAINING"
-                  );
-                  if (payment.success) {
-                    showToast("Payment Successful!", "success");
-                    setBooking((prev: any) => ({
-                      ...prev,
-                      remaining_amount: 0,
-                      paid_amount: Number(prev.paid_amount || 0) + Number(prev.remaining_amount || 0),
-                      payment_status: "paid"
-                    }));
-                    setTimeout(() => onRefresh(), 3000); // Delay refresh to avoid fetching stale DB data
-                  } else {
-                    showAlert({ type: "error", title: "Payment Failed", message: "Payment could not be completed." });
-                  }
-                } catch (err: any) {
-                  showAlert({ type: "error", title: "Payment Failed", message: "An error occurred during payment." });
-                } finally {
-                  setProcessingPayment(false);
-                }
-              }}
+              onPress={handlePayRemainingAmount}
+              disabled={processingPayment}
             >
               {processingPayment ? (
                 <ActivityIndicator color="#000" />
@@ -838,8 +874,12 @@ export default function BookingDetailsScreen({ route }: Props) {
           </>
         )}
 
-        {/* CANCEL BUTTON */}
-        {normalizedWorkStatus !== 'CANCELLED' && normalizedWorkStatus !== 'COMPLETED' && booking.payment_status !== 'failed' && normalizedWorkStatus !== 'PAYMENT FAILED' ? (
+        {/* CANCEL BUTTON - Hidden once partner is assigned */}
+        {normalizedWorkStatus !== 'CANCELLED' &&
+         normalizedWorkStatus !== 'COMPLETED' &&
+         booking.payment_status !== 'failed' &&
+         normalizedWorkStatus !== 'PAYMENT FAILED' &&
+         !isStaffAssigned ? (
           <View>
             <TouchableOpacity
               style={[

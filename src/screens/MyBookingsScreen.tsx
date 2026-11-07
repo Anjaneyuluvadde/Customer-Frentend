@@ -71,7 +71,13 @@ export default function MyBookingsScreen() {
   const currentBookings = useMemo(
     () => bookings.filter((b) => {
       const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
-      return normalizedWorkStatus !== "COMPLETED";
+      const normalizedPaymentStatus = String(b.payment_status || "").trim().toLowerCase();
+      return (
+        normalizedWorkStatus !== "COMPLETED" &&
+        normalizedWorkStatus !== "CANCELLED" &&
+        normalizedWorkStatus !== "PAYMENT FAILED" &&
+        normalizedPaymentStatus !== "failed"
+      );
     }),
     [bookings],
   );
@@ -79,7 +85,7 @@ export default function MyBookingsScreen() {
   const completedBookings = useMemo(
     () => bookings.filter((b) => {
       const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
-      return normalizedWorkStatus === "COMPLETED";
+      return normalizedWorkStatus === "COMPLETED" || normalizedWorkStatus === "CANCELLED";
     }),
     [bookings],
   );

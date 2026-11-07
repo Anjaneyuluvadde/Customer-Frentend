@@ -29,7 +29,7 @@
 // import { useTheme } from "../context/ThemeContext";
 // import { useNotification } from "../hooks/useNotification";
 // import { supabase } from "../lib/supabase";
-import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
+// import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
 // import { COLORS } from "../theme/colors";
 // import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 // import { generateReferralCode } from "../utils/referralUtils";
@@ -910,9 +910,9 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNotification } from "../hooks/useNotification";
 import { supabase } from "../lib/supabase";
-// import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
+import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
 import { COLORS } from "../theme/colors";
-// import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
+import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 import { isTempEmail } from "../utils/authUtils";
 import { generateReferralCode } from "../utils/referralUtils";
 
@@ -1195,6 +1195,14 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               console.log("[LOGOUT] Starting logout");
+              try {
+                const token = await registerForPushNotificationsAsync();
+                if (token) {
+                  await removePushTokenFromSupabase(token);
+                }
+              } catch (pushErr) {
+                console.error("Failed to remove push token on logout:", pushErr);
+              }
 
               const { error } = await supabase.auth.signOut();
 

@@ -1052,13 +1052,14 @@ const offerData = offersData.find(
 
           </View>
 
-          {/* ✅ FAQs Section */}
-          {(() => {
+          {/* ✅ FAQs Section (Commented Out) */}
+          {/*
+          (() => {
             const faqs = getServiceSpecificFAQs();
 
             return (
               <View style={{ marginTop: 24, paddingBottom: 16 }}>
-                {/* FAQ Badge */}
+                // FAQ Badge
                 <View
                   style={{
                     backgroundColor: isDark ? "rgba(244, 196, 48, 0.15)" : "#FDFCE8",
@@ -1084,7 +1085,7 @@ const offerData = offersData.find(
                   </Text>
                 </View>
 
-                {/* FAQ Title */}
+                // FAQ Title
                 <Text
                   style={{
                     fontSize: 22,
@@ -1111,7 +1112,8 @@ const offerData = offersData.find(
                 <FAQAccordion faqs={faqs} />
               </View>
             );
-          })()}
+          })()
+          */}
         </View>
 
 
