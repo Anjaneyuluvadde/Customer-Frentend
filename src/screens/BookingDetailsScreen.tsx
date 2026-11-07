@@ -614,12 +614,12 @@ export default function BookingDetailsScreen({ route }: Props) {
       setReview({ rating, comment });
       setShowReviewModal(false);
       showToast(t("review.submitSuccess"), "success");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       showAlert({
         type: "error",
         title: t("common.error"),
-        message: t("review.submitError"),
+        message: err?.message || t("review.submitError"),
       });
     } finally {
       setSubmittingReview(false);

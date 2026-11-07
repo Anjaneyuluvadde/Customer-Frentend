@@ -530,7 +530,7 @@ const offerData = offersData.find(
 
     if (existingAddon) {
       // If already added, increment quantity (up to max_quantity)
-      const maxQty = addons.find((a) => a.id === addon.id)?.max_quantity || 3;
+      const maxQty = addons.find((a) => a.id === addon.id)?.max_quantity || addon.max_quantity || 3;
       if ((existingAddon.quantity || 1) >= maxQty) {
         return;
       }
@@ -1566,13 +1566,13 @@ const offerData = offersData.find(
                             paddingHorizontal: 20,
                             paddingVertical: 8,
                           }}
-                          disabled={(selectedServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= 3}
+                          disabled={(selectedServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= (selectedAddonDetail.max_quantity || 3)}
                         >
                           <Text
                             style={{
                               fontSize: 24,
                               fontWeight: "700",
-                              color: (selectedServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= 3 ? theme.textLight : theme.text
+                              color: (selectedServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= (selectedAddonDetail.max_quantity || 3) ? theme.textLight : theme.text
                             }}
                           >
                             +

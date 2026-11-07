@@ -6,7 +6,7 @@ type BookingCartContextType = {
   cartItems: SelectedService[];
   addService: (service: Service | SelectedService) => void;
   removeService: (serviceId: string) => void;
-  updateQuantity: (serviceId: string, delta: number) => void;
+  updateQuantity: (serviceId: string, quantity: number) => void;
   clearCart: () => void;
   totalPrice: number;
   totalUnits: number;
@@ -90,15 +90,17 @@ export function BookingCartProvider({ children }: { children: React.ReactNode })
     setCartItems((prev) => prev.filter((s) => s.id !== serviceId));
   };
 
-  const updateQuantity = (serviceId: string, delta: number) => {
+  const updateQuantity = (serviceId: string, quantity: number) => {
     setCartItems((prev) => {
+      if (quantity <= 0) {
+        return prev.filter((s) => s.id !== serviceId);
+      }
       return prev.map((s) => {
         if (s.id === serviceId) {
-          const newQuantity = (s.quantity || 1) + delta;
-          return { ...s, quantity: newQuantity };
+          return { ...s, quantity };
         }
         return s;
-      }).filter(s => (s.quantity || 1) > 0);
+      });
     });
   };
 

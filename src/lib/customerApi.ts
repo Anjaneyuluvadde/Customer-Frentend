@@ -1062,6 +1062,7 @@ export async function submitCustomerBookingReview(
   }
 
   const headers = await getAuthHeaders(true);
+  const cleanRating = Math.max(1, Math.min(5, Math.round(Number(rating) || 5)));
 
   const response = await fetch(
     `${API_BASE_URL}/api/v1/customer/bookings/${encodeURIComponent(bookingId)}/reviews`,
@@ -1069,16 +1070,26 @@ export async function submitCustomerBookingReview(
       method: "POST",
       headers,
       body: JSON.stringify({
-        rating,
-        comment: comment || "",
+        rating: cleanRating,
+        comment: (comment || "").trim(),
       }),
     }
   );
 
   if (!response.ok) {
-    throw new Error(
-      `Unable to submit review: HTTP ${response.status}`
-    );
+    let errorDetail = `HTTP ${response.status}`;
+    try {
+      const errJson = await response.json();
+      if (errJson?.detail) {
+        errorDetail = typeof errJson.detail === "string" ? errJson.detail : JSON.stringify(errJson.detail);
+      }
+    } catch (_) {
+      try {
+        const errText = await response.text();
+        if (errText) errorDetail = errText.slice(0, 100);
+      } catch (_) {}
+    }
+    throw new Error(errorDetail);
   }
 
   return response.json();
