@@ -470,7 +470,6 @@
 //     setHeroBanners(fallbackBanners);
 //   }, []);
 
-
 //   // ✅ Fetch promotional banners with eligibility checks
 
 // const fetchPromotionalBanners = useCallback(async () => {
@@ -671,7 +670,6 @@
 //     return () => interactionPromise.cancel();
 //   }, [fetchServices, fetchHeroBanners, fetchPromotionalBanners, fetchPopups, fetchMainCategories, checkWelcomeReward, checkSignupOfferReward]);
 
-
 //   // 👇👇👇 ADD THE FOCUS BLOCK HERE 👇👇👇
 //   useFocusEffect(
 //     useCallback(() => {
@@ -686,8 +684,6 @@
 //       return () => clearInterval(interval);
 //     }, [fetchPromotionalBanners])
 //   );
-
-
 
 //   // ⬇️⬇️⬇️ ADD THE REALTIME USEEFFECT HERE ⬇️⬇️⬇️
 //   useEffect(() => {
@@ -1006,8 +1002,6 @@
 //   //   return () => clearInterval(interval);
 //   // }, [heroBanners.length, isUserSwiping]);
 
-
-
 //     // ✅ Auto-advance the APP_POPUP carousel every 3 seconds
 //   useEffect(() => {
 //     if (!showPopup || popupType !== "APP_POPUP" || appPopups.length <= 1) return;
@@ -1047,12 +1041,10 @@
 //     scrollRef.current?.scrollTo({ y: servicesY || 0, animated: true });
 //   }, [services, mainCategories, allSubCategoriesByMainCategory, navigation, servicesY]);
 
-
 //   return (
 //     <View style={{ flex: 1, backgroundColor: theme.background }}>
 //       <SafeAreaView style={{ backgroundColor: "#FFC928", flex: 0 }} edges={["top"]} />
 //       <StatusBar barStyle="dark-content" backgroundColor="#FFC928" />
-
 
 //         <ScrollView
 //           ref={scrollRef}
@@ -1079,7 +1071,6 @@
 
 //           {/* New User Promo Banner (Matching Website Image 1) */}
 //           <PromotionalBannerSlider banners={promotionalBanners} theme={theme} onBannerPress={handleBannerPress} />
-
 
 //           {/* 3. Main Category Grid (Explore all services) */}
 //           {mainCategories.length > 0 && (
@@ -1117,7 +1108,6 @@
 //               </View>
 //             </View>
 //           )}
-
 
 //           {/* 6. Why Choose Us Section */}
 //           <WhyChooseUs onBookNow={navigateToExpressCleaning} />
@@ -1210,8 +1200,6 @@
 //           </AnimatedGradientBorder>
 //         </Pressable>
 //       </Modal>
-
-
 
 //       {/* Welcome Reward Popup */}
 //       <Modal visible={showWelcomePopup} transparent animationType="slide" onRequestClose={() => setShowWelcomePopup(false)}>
@@ -1807,26 +1795,6 @@
 //     lineHeight: 9,
 //   }
 // });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import { Ionicons } from "@expo/vector-icons";
 // import { useFocusEffect, useIsFocused } from "@react-navigation/native";
@@ -2144,7 +2112,6 @@
 //         //   }
 //         // }
 
-
 //         // Check NEW_USER campaign eligibility
 // if (banner.customer_type === "new") {
 //   const userCreatedAt = new Date(session.user.created_at);
@@ -2310,7 +2277,6 @@
 //       //   }
 //       // }
 
-
 //       if (session?.user) {
 //   const { count } = await supabase
 //     .from("bookings")
@@ -2439,7 +2405,6 @@
 //     setHeroBanners(fallbackBanners);
 //   }, []);
 
-
 //   // ✅ Fetch promotional banners with eligibility checks
 
 // const fetchPromotionalBanners = useCallback(async () => {
@@ -2560,9 +2525,6 @@
 //         // } else if (!banner.customer_type || banner.customer_type === "everyone") {
 //         //   customerEligible = true;
 //         // }
-
-
-
 
 //         // 2. Customer type + signup date eligibility
 // let customerEligible = true;
@@ -2699,7 +2661,6 @@
 //     return () => interactionPromise.cancel();
 //   }, [fetchServices, fetchHeroBanners, fetchPromotionalBanners, fetchPopups, fetchMainCategories, checkWelcomeReward, checkSignupOfferReward]);
 
-
 //   // 👇👇👇 ADD THE FOCUS BLOCK HERE 👇👇👇
 //   useFocusEffect(
 //     useCallback(() => {
@@ -2714,8 +2675,6 @@
 //       return () => clearInterval(interval);
 //     }, [fetchPromotionalBanners])
 //   );
-
-
 
 //   // ⬇️⬇️⬇️ ADD THE REALTIME USEEFFECT HERE ⬇️⬇️⬇️
 //   useEffect(() => {
@@ -3034,8 +2993,6 @@
 //   //   return () => clearInterval(interval);
 //   // }, [heroBanners.length, isUserSwiping]);
 
-
-
 //     // ✅ Auto-advance the APP_POPUP carousel every 3 seconds
 //   useEffect(() => {
 //     if (!showPopup || popupType !== "APP_POPUP" || appPopups.length <= 1) return;
@@ -3075,12 +3032,10 @@
 //     scrollRef.current?.scrollTo({ y: servicesY || 0, animated: true });
 //   }, [services, mainCategories, allSubCategoriesByMainCategory, navigation, servicesY]);
 
-
 //   return (
 //     <View style={{ flex: 1, backgroundColor: theme.background }}>
 //       <SafeAreaView style={{ backgroundColor: "#FFC928", flex: 0 }} edges={["top"]} />
 //       <StatusBar barStyle="dark-content" backgroundColor="#FFC928" />
-
 
 //         <ScrollView
 //           ref={scrollRef}
@@ -3107,7 +3062,6 @@
 
 //           {/* New User Promo Banner (Matching Website Image 1) */}
 //           <PromotionalBannerSlider banners={promotionalBanners} theme={theme} onBannerPress={handleBannerPress} />
-
 
 //           {/* 3. Main Category Grid (Explore all services) */}
 //           {mainCategories.length > 0 && (
@@ -3145,7 +3099,6 @@
 //               </View>
 //             </View>
 //           )}
-
 
 //           {/* 6. Why Choose Us Section */}
 //           <WhyChooseUs onBookNow={navigateToExpressCleaning} />
@@ -3238,8 +3191,6 @@
 //           </AnimatedGradientBorder>
 //         </Pressable>
 //       </Modal>
-
-
 
 //       {/* Welcome Reward Popup */}
 //       <Modal visible={showWelcomePopup} transparent animationType="slide" onRequestClose={() => setShowWelcomePopup(false)}>
@@ -3835,29 +3786,6 @@
 //     lineHeight: 9,
 //   }
 // });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import { Ionicons } from "@expo/vector-icons";
 // import { useFocusEffect, useIsFocused } from "@react-navigation/native";
@@ -4188,7 +4116,6 @@
 //         //   }
 //         // }
 
-
 //         // Check NEW_USER campaign eligibility
 // if (banner.customer_type === "new") {
 //   const userCreatedAt = new Date(session.user.created_at);
@@ -4354,7 +4281,6 @@
 //       //   }
 //       // }
 
-
 //     if (session?.user) {
 //       // Same reuse rule as handleBannerPress
 //       const { data: existingRows, error: existingErr } = await supabase
@@ -4491,7 +4417,6 @@
 //     setHeroBanners(fallbackBanners);
 //   }, []);
 
-
 //   // ✅ Fetch promotional banners with eligibility checks
 
 // const fetchPromotionalBanners = useCallback(async () => {
@@ -4612,9 +4537,6 @@
 //         // } else if (!banner.customer_type || banner.customer_type === "everyone") {
 //         //   customerEligible = true;
 //         // }
-
-
-
 
 //         // 2. Customer type + signup date eligibility
 // let customerEligible = true;
@@ -4751,7 +4673,6 @@
 //     return () => interactionPromise.cancel();
 //   }, [fetchServices, fetchHeroBanners, fetchPromotionalBanners, fetchPopups, fetchMainCategories, checkWelcomeReward, checkSignupOfferReward]);
 
-
 //   // 👇👇👇 ADD THE FOCUS BLOCK HERE 👇👇👇
 //   useFocusEffect(
 //     useCallback(() => {
@@ -4766,8 +4687,6 @@
 //       return () => clearInterval(interval);
 //     }, [fetchPromotionalBanners])
 //   );
-
-
 
 //   // ⬇️⬇️⬇️ ADD THE REALTIME USEEFFECT HERE ⬇️⬇️⬇️
 //   useEffect(() => {
@@ -5095,8 +5014,6 @@
 //   //   return () => clearInterval(interval);
 //   // }, [heroBanners.length, isUserSwiping]);
 
-
-
 //     // ✅ Auto-advance the APP_POPUP carousel every 3 seconds
 //   useEffect(() => {
 //     if (!showPopup || popupType !== "APP_POPUP" || appPopups.length <= 1) return;
@@ -5136,12 +5053,10 @@
 //     scrollRef.current?.scrollTo({ y: servicesY || 0, animated: true });
 //   }, [services, mainCategories, allSubCategoriesByMainCategory, navigation, servicesY]);
 
-
 //   return (
 //     <View style={{ flex: 1, backgroundColor: theme.background }}>
 //       <SafeAreaView style={{ backgroundColor: "#FFC928", flex: 0 }} edges={["top"]} />
 //       <StatusBar barStyle="dark-content" backgroundColor="#FFC928" />
-
 
 //         <ScrollView
 //           ref={scrollRef}
@@ -5168,7 +5083,6 @@
 
 //           {/* New User Promo Banner (Matching Website Image 1) */}
 //           <PromotionalBannerSlider banners={promotionalBanners} theme={theme} onBannerPress={handleBannerPress} />
-
 
 //           {/* 3. Main Category Grid (Explore all services) */}
 //           {mainCategories.length > 0 && (
@@ -5206,7 +5120,6 @@
 //               </View>
 //             </View>
 //           )}
-
 
 //           {/* 6. Why Choose Us Section */}
 //           <WhyChooseUs onBookNow={navigateToExpressCleaning} />
@@ -5299,8 +5212,6 @@
 //           </AnimatedGradientBorder>
 //         </Pressable>
 //       </Modal>
-
-
 
 //       {/* Welcome Reward Popup */}
 //       <Modal visible={showWelcomePopup} transparent animationType="slide" onRequestClose={() => setShowWelcomePopup(false)}>
@@ -5897,43 +5808,16 @@
 //   }
 // });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   checkPincodeServiceable,
   getCustomerAppPopups,
@@ -5948,7 +5832,6 @@ import {
   getCustomerServices,
   updateCustomerProfile,
 } from "../lib/customerApi";
-
 
 import {
   ActivityIndicator,
@@ -5966,15 +5849,21 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
 
 import Header from "../components/Header";
 import HomeHero from "../components/HomeHero";
-import PromotionalBannerSlider, { PromotionalBanner } from "../components/PromotionalBannerSlider";
+import LoadingOverlay from "../components/LoadingOverlay";
+import PromotionalBannerSlider, {
+  PromotionalBanner,
+} from "../components/PromotionalBannerSlider";
 import ServiceCard from "../components/ServiceCard";
 import WhyChooseUs from "../components/WhyChooseUs";
 import { useLanguage } from "../context/LanguageContext";
@@ -5982,10 +5871,14 @@ import { useTheme } from "../context/ThemeContext"; // @ts-ignore
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 import { useNotification } from "../hooks/useNotification";
 import { supabase, SUPABASE_URL } from "../lib/supabase";
-import LocationService from '../services/LocationService';
+import LocationService from "../services/LocationService";
 import { COLORS } from "../theme/colors";
 import { MainCategory, Service } from "../types/service";
-import { clearClaimedOffer, getClaimedOffer, setClaimedOffer } from "../utils/priceUtils";
+import {
+  clearClaimedOffer,
+  getClaimedOffer,
+  setClaimedOffer,
+} from "../utils/priceUtils";
 
 const { width, height } = Dimensions.get("window");
 const SLIDER_HEIGHT = height * 0.25; // Increased height to reduce empty space
@@ -6009,7 +5902,7 @@ const getLevenshteinDistance = (a: string, b: string) => {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1,
           matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
+          matrix[i - 1][j] + 1,
         );
       }
     }
@@ -6026,18 +5919,27 @@ export default function HomeScreen({ navigation }: any) {
   const { theme } = useTheme();
   const [services, setServices] = useState<Service[]>([]);
   const [mainCategories, setMainCategories] = useState<MainCategory[]>([]);
-  const [activeMainCategory, setActiveMainCategory] = useState<string | null>(null);
+  const [activeMainCategory, setActiveMainCategory] = useState<string | null>(
+    null,
+  );
   const [activeCategory, setActiveCategory] = useState("ALL");
-  const [measuredHeights, setMeasuredHeights] = useState<{ [key: string]: number }>({});
+  const [measuredHeights, setMeasuredHeights] = useState<{
+    [key: string]: number;
+  }>({});
   const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingInitialBanners, setLoadingInitialBanners] = useState(true);
+
+  const isInitialLoading = loading || loadingInitialBanners;
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
   const bottomNavPadding = useBottomNavPadding();
 
   // ✅ Hero banners state
   const [heroBanners, setHeroBanners] = useState<ImageSourcePropType[]>([]);
-  const [promotionalBanners, setPromotionalBanners] = useState<PromotionalBanner[]>([]);
+  const [promotionalBanners, setPromotionalBanners] = useState<
+    PromotionalBanner[]
+  >([]);
 
   // ✅ Refs
   const sliderRef = useRef<FlatList>(null);
@@ -6053,10 +5955,21 @@ export default function HomeScreen({ navigation }: any) {
 
   // ✅ Popup state
   const POPUP_WIDTH = Math.min(width - 48, 360);
-  const [popupType, setPopupType] = useState<"APP_POPUP" | "OFFERS" | null>(null);
-  const [appPopups, setAppPopups] = useState<{ title: string; description: string | null; image_url: string | null }[]>([]);
+  const [popupType, setPopupType] = useState<"APP_POPUP" | "OFFERS" | null>(
+    null,
+  );
+  const [appPopups, setAppPopups] = useState<
+    { title: string; description: string | null; image_url: string | null }[]
+  >([]);
   const [popupIndex, setPopupIndex] = useState(0);
-  const [activeOffers, setActiveOffers] = useState<{ service_type: string; title: string; offer_percentage: number; description: string | null }[]>([]);
+  const [activeOffers, setActiveOffers] = useState<
+    {
+      service_type: string;
+      title: string;
+      offer_percentage: number;
+      description: string | null;
+    }[]
+  >([]);
   const [showPopup, setShowPopup] = useState(false);
   const { showToast } = useNotification();
 
@@ -6066,27 +5979,42 @@ export default function HomeScreen({ navigation }: any) {
 
   // ✅ Signup 40% OFF Offer Popup state
   const [showSignupOfferPopup, setShowSignupOfferPopup] = useState(false);
-  const [signupOfferInfo, setSignupOfferInfo] = useState<{ title: string; id?: string } | null>(null);
+  const [signupOfferInfo, setSignupOfferInfo] = useState<{
+    title: string;
+    id?: string;
+  } | null>(null);
 
   // ✅ Promo Banner state
-  const [activePromoBanner, setActivePromoBanner] = useState<PromotionalBanner | null>(null);
+  const [activePromoBanner, setActivePromoBanner] =
+    useState<PromotionalBanner | null>(null);
   const [loadingPromoServices, setLoadingPromoServices] = useState(false);
   const [showServiceSelectModal, setShowServiceSelectModal] = useState(false);
-  const [selectedPromoServiceId, setSelectedPromoServiceId] = useState<string | null>(null);
+  const [selectedPromoServiceId, setSelectedPromoServiceId] = useState<
+    string | null
+  >(null);
   const [promoBannerServices, setPromoBannerServices] = useState<any[]>([]);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   const checkWelcomeReward = useCallback(async () => {
     try {
       // Safely get the session without forcing a stressful backend refresh
-      const { data: { session }, error: refreshError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: refreshError,
+      } = await supabase.auth.getSession();
       if (refreshError) throw refreshError;
 
       const user = session?.user;
       console.log("🔍 Checking Welcome Reward metadata...");
 
-      if (user?.user_metadata?.show_welcome_reward && user?.user_metadata?.welcome_coupon_code) {
-        console.log("🎁 Welcome Reward detected!", user.user_metadata.welcome_coupon_code);
+      if (
+        user?.user_metadata?.show_welcome_reward &&
+        user?.user_metadata?.welcome_coupon_code
+      ) {
+        console.log(
+          "🎁 Welcome Reward detected!",
+          user.user_metadata.welcome_coupon_code,
+        );
         setWelcomeCoupon(user.user_metadata.welcome_coupon_code);
 
         // Short delay to ensure other UI is ready
@@ -6096,7 +6024,7 @@ export default function HomeScreen({ navigation }: any) {
 
         // Update metadata to NOT show it again
         await supabase.auth.updateUser({
-          data: { show_welcome_reward: false }
+          data: { show_welcome_reward: false },
         });
       }
     } catch (err) {
@@ -6106,7 +6034,9 @@ export default function HomeScreen({ navigation }: any) {
 
   const checkSignupOfferReward = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const user = session?.user;
 
       const serviceTitle = user?.user_metadata?.signup_service_title;
@@ -6122,7 +6052,7 @@ export default function HomeScreen({ navigation }: any) {
 
         // Update metadata to NOT show it again on future visits
         await supabase.auth.updateUser({
-          data: { show_signup_offer_popup: false }
+          data: { show_signup_offer_popup: false },
         });
       }
     } catch (err) {
@@ -6130,412 +6060,426 @@ export default function HomeScreen({ navigation }: any) {
     }
   }, []);
 
-  
-const handleGoToSignupService = useCallback(async () => {
-  setShowSignupOfferPopup(false);
+  const handleGoToSignupService = useCallback(async () => {
+    setShowSignupOfferPopup(false);
 
-  if (!signupOfferInfo) return;
+    if (!signupOfferInfo) return;
 
-  const isMatchingService = (s: {
-    id: string;
-    title?: string | null;
-  }) =>
-    (Boolean(signupOfferInfo.id) &&
-      s.id === signupOfferInfo.id) ||
-    (Boolean(signupOfferInfo.title) &&
-      s.title?.toLowerCase().trim() ===
-        signupOfferInfo.title?.toLowerCase().trim());
+    const isMatchingService = (s: { id: string; title?: string | null }) =>
+      (Boolean(signupOfferInfo.id) && s.id === signupOfferInfo.id) ||
+      (Boolean(signupOfferInfo.title) &&
+        s.title?.toLowerCase().trim() ===
+          signupOfferInfo.title?.toLowerCase().trim());
 
-  // Step 1: Search services already loaded into Home Screen state.
-  let matchingSvc = services.find(isMatchingService);
+    // Step 1: Search services already loaded into Home Screen state.
+    let matchingSvc = services.find(isMatchingService);
 
-  // Step 2: If not found, fetch services through FastAPI.
-  if (!matchingSvc) {
-    try {
-      console.log(
-        "[CUSTOMER FASTAPI] Looking up signup offer service"
-      );
+    // Step 2: If not found, fetch services through FastAPI.
+    if (!matchingSvc) {
+      try {
+        console.log("[CUSTOMER FASTAPI] Looking up signup offer service");
 
-      const apiServices = await getCustomerServices();
+        const apiServices = await getCustomerServices();
 
-      matchingSvc = apiServices.find(isMatchingService);
+        matchingSvc = apiServices.find(isMatchingService);
 
-      console.log(
-        "[CUSTOMER FASTAPI] Signup offer service found:",
-        matchingSvc?.title ?? "Not found"
-      );
-    } catch (error) {
-      console.error(
-        "[CUSTOMER FASTAPI] Signup offer service lookup failed:",
-        error
+        console.log(
+          "[CUSTOMER FASTAPI] Signup offer service found:",
+          matchingSvc?.title ?? "Not found",
+        );
+      } catch (error) {
+        console.error(
+          "[CUSTOMER FASTAPI] Signup offer service lookup failed:",
+          error,
+        );
+      }
+    }
+
+    // Step 3: Preserve existing navigation and fallback behavior.
+    if (matchingSvc) {
+      navigation.navigate("ServiceDetail", {
+        service: matchingSvc,
+      });
+    } else {
+      showToast(
+        "40% OFF discount saved! Browse services to select your booking.",
+        "info",
       );
     }
-  }
-
-  // Step 3: Preserve existing navigation and fallback behavior.
-  if (matchingSvc) {
-    navigation.navigate("ServiceDetail", {
-      service: matchingSvc,
-    });
-  } else {
-    showToast(
-      "40% OFF discount saved! Browse services to select your booking.",
-      "info"
-    );
-  }
-}, [signupOfferInfo, services, navigation, showToast]);
-
+  }, [signupOfferInfo, services, navigation, showToast]);
 
   // ✅ Category Sheet state
   const [categorySheetVisible, setCategorySheetVisible] = useState(false);
-  const [selectedMainCategoryForSheet, setSelectedMainCategoryForSheet] = useState<MainCategory | null>(null);
+  const [selectedMainCategoryForSheet, setSelectedMainCategoryForSheet] =
+    useState<MainCategory | null>(null);
   const isFocused = useIsFocused();
 
-  
-const fetchServices = useCallback(async () => {
-  try {
-    console.log("[CUSTOMER FASTAPI] Home services request started");
-
-    // Fetch services through Python FastAPI
-    let serviceList = await getCustomerServices();
-
-    console.log(
-      "[CUSTOMER FASTAPI] Home services received:",
-      serviceList.length
-    );
-
-    // Keep existing Supabase offers logic unchanged
-    const offersData = await getCustomerOffers();
-
-console.log(
-  "[CUSTOMER FASTAPI] Home offers received:",
-  offersData.length
-);
-
-
-    // Apply existing promotional discounts
-    if (offersData && offersData.length > 0) {
-      serviceList = serviceList.map((svc: any) => {
-        const matchingOffer = offersData.find(
-          (o) => o.title.toLowerCase() === svc.title.toLowerCase()
-        );
-
-        if (matchingOffer && matchingOffer.offer_percentage > 0) {
-          return {
-            ...svc,
-            discount_label: `${matchingOffer.offer_percentage}% OFF`,
-            discount_percent: matchingOffer.offer_percentage,
-          };
-        }
-
-        return svc;
-      });
-    }
-
-    // Update existing Home Screen state
-    setServices(serviceList);
-  } catch (error) {
-    console.error(
-      "[CUSTOMER FASTAPI] Home services request failed:",
-      error
-    );
-  }
-}, []);
-;
-
-  
-const fetchMainCategories = useCallback(async () => {
-  try {
-    console.log("[CUSTOMER FASTAPI] Main categories request started");
-
-    const categories = await getCustomerMainCategories();
-
-    console.log(
-      "[CUSTOMER FASTAPI] Main categories received:",
-      categories.length
-    );
-
-    setMainCategories(categories);
-  } catch (error) {
-    console.error(
-      "[CUSTOMER FASTAPI] Main categories request failed:",
-      error
-    );
-  }
-}, []);
-
-
-  const handleBannerPress = useCallback(async (banner: PromotionalBanner) => {
-    console.log("[PROMO] Banner tapped");
-    console.log("[PROMO] Service scope:", banner.service_scope);
-
-    if (!banner.offer_percentage || banner.offer_percentage <= 0) {
-      return;
-    }
-
+  const fetchServices = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log("[CUSTOMER FASTAPI] Home services request started");
 
-      // 👇 NEW CHECK: Stop flow and show popup if not logged in
-      if (!session?.user) {
-        setShowLoginPrompt(true);
+      // Fetch services through Python FastAPI
+      let serviceList = await getCustomerServices();
+
+      console.log(
+        "[CUSTOMER FASTAPI] Home services received:",
+        serviceList.length,
+      );
+
+      // Keep existing Supabase offers logic unchanged
+      const offersData = await getCustomerOffers();
+
+      console.log(
+        "[CUSTOMER FASTAPI] Home offers received:",
+        offersData.length,
+      );
+
+      // Apply existing promotional discounts
+      if (offersData && offersData.length > 0) {
+        serviceList = serviceList.map((svc: any) => {
+          const matchingOffer = offersData.find(
+            (o) => o.title.toLowerCase() === svc.title.toLowerCase(),
+          );
+
+          if (matchingOffer && matchingOffer.offer_percentage > 0) {
+            return {
+              ...svc,
+              discount_label: `${matchingOffer.offer_percentage}% OFF`,
+              discount_percent: matchingOffer.offer_percentage,
+            };
+          }
+
+          return svc;
+        });
+      }
+
+      // Update existing Home Screen state
+      setServices(serviceList);
+    } catch (error) {
+      console.error("[CUSTOMER FASTAPI] Home services request failed:", error);
+    }
+  }, []);
+  const fetchMainCategories = useCallback(async () => {
+    try {
+      console.log("[CUSTOMER FASTAPI] Main categories request started");
+
+      const categories = await getCustomerMainCategories();
+
+      console.log(
+        "[CUSTOMER FASTAPI] Main categories received:",
+        categories.length,
+      );
+
+      setMainCategories(categories);
+    } catch (error) {
+      console.error(
+        "[CUSTOMER FASTAPI] Main categories request failed:",
+        error,
+      );
+    }
+  }, []);
+
+  const handleBannerPress = useCallback(
+    async (banner: PromotionalBanner) => {
+      console.log("[PROMO] Banner tapped");
+      console.log("[PROMO] Service scope:", banner.service_scope);
+
+      if (!banner.offer_percentage || banner.offer_percentage <= 0) {
         return;
       }
 
-      if (session?.user) {
-        // 1. Check if user already selected a service for this banner via customer API
-        let userProfile: any = null;
-        try {
-          const profResp = await getCustomerProfile();
-          userProfile = profResp?.data;
-        } catch (e) {
-          console.log("[Banner] Error fetching customer profile:", e);
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        // 👇 NEW CHECK: Stop flow and show popup if not logged in
+        if (!session?.user) {
+          setShowLoginPrompt(true);
+          return;
         }
 
-        const isSameBanner = userProfile?.promotional_banner_selected === banner.id;
-        const hasSelectedService = !!userProfile?.service_selected;
-
-        if (isSameBanner && hasSelectedService) {
-          // Check if this specific selected booking is COMPLETED
-          let promoBookings: any[] = [];
+        if (session?.user) {
+          // 1. Check if user already selected a service for this banner via customer API
+          let userProfile: any = null;
           try {
-            const myBookings = await getCustomerMyBookings();
-            promoBookings = (myBookings || []).filter((b: any) =>
-              b.promotional_banner_id === banner.id &&
-              String(b.work_status || "").trim().toUpperCase() === "COMPLETED"
-            );
+            const profResp = await getCustomerProfile();
+            userProfile = profResp?.data;
           } catch (e) {
-            console.log("[Banner] Error checking promo bookings:", e);
+            console.log("[Banner] Error fetching customer profile:", e);
           }
 
-          let hasCompletedSelectedService = false;
-          if (promoBookings && promoBookings.length > 0) {
-            for (const booking of promoBookings) {
-              let bServices = booking.services;
-              if (typeof bServices === "string") {
-                try {
-                  bServices = JSON.parse(bServices);
-                } catch {
-                  bServices = [];
+          const isSameBanner =
+            userProfile?.promotional_banner_selected === banner.id;
+          const hasSelectedService = !!userProfile?.service_selected;
+
+          if (isSameBanner && hasSelectedService) {
+            // Check if this specific selected booking is COMPLETED
+            let promoBookings: any[] = [];
+            try {
+              const myBookings = await getCustomerMyBookings();
+              promoBookings = (myBookings || []).filter(
+                (b: any) =>
+                  b.promotional_banner_id === banner.id &&
+                  String(b.work_status || "")
+                    .trim()
+                    .toUpperCase() === "COMPLETED",
+              );
+            } catch (e) {
+              console.log("[Banner] Error checking promo bookings:", e);
+            }
+
+            let hasCompletedSelectedService = false;
+            if (promoBookings && promoBookings.length > 0) {
+              for (const booking of promoBookings) {
+                let bServices = booking.services;
+                if (typeof bServices === "string") {
+                  try {
+                    bServices = JSON.parse(bServices);
+                  } catch {
+                    bServices = [];
+                  }
                 }
-              }
-              if (Array.isArray(bServices)) {
-                if (bServices.some((s: any) => s.id === userProfile.service_selected)) {
-                  hasCompletedSelectedService = true;
-                  break;
+                if (Array.isArray(bServices)) {
+                  if (
+                    bServices.some(
+                      (s: any) => s.id === userProfile.service_selected,
+                    )
+                  ) {
+                    hasCompletedSelectedService = true;
+                    break;
+                  }
                 }
               }
             }
+
+            if (hasCompletedSelectedService) {
+              showToast("This offer has already been used.", "info");
+              return;
+            }
+
+            // Active / Not completed case -> Fetch selected service
+            let selectedService: any = null;
+            try {
+              const allSvcs = await getCustomerServices();
+              selectedService = (allSvcs || []).find(
+                (s: any) => s.id === userProfile.service_selected,
+              );
+            } catch (e) {
+              console.log("[Banner] Error fetching service details:", e);
+            }
+
+            if (selectedService) {
+              // Restore claimedOffer to ensure discount applies even if local storage was cleared
+              const claimObject = {
+                type: "PROMOTIONAL_BANNER" as const, // <-- Added "as const" to fix TS error
+                bannerId: banner.id,
+                serviceId: selectedService.id,
+                serviceTitle: selectedService.title,
+                offerPercentage: banner.offer_percentage ?? 0,
+                claimedAt: new Date().toISOString(),
+                userId: session.user.id,
+                source: "promotional_banner",
+              };
+              await setClaimedOffer(claimObject);
+
+              Alert.alert(
+                "Offer Already Selected",
+                `You have already selected ${selectedService.title} for this offer.`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "View Service",
+                    onPress: () =>
+                      navigation.navigate("ServiceDetail", {
+                        serviceId: selectedService.id,
+                      }),
+                  },
+                ],
+              );
+              return;
+            } else {
+              // Service missing/deleted, clear invalid selection
+              await updateCustomerProfile({
+                service_selected: null,
+                promotional_banner_selected: null,
+              });
+            }
+          } else {
+            // Different banner or no selection
+            // Allow the flow to continue to the service selection modal
+            // The specific service check will be performed in handleSelectedServiceClaim
           }
 
-          if (hasCompletedSelectedService) {
-            showToast("This offer has already been used.", "info");
-            return;
-          }
+          // Check for NEW_USER eligibility if banner is for new users
+          // if (banner.customer_type === "new") {
+          //   const { count: totalPaidCount } = await supabase
+          //     .from("bookings")
+          //     .select("id", { count: "exact", head: true })
+          //     .eq("user_id", session.user.id)
+          //     .eq("payment_verified", true)
+          //     .ilike("payment_status", "paid");
 
-          // Active / Not completed case -> Fetch selected service
-          let selectedService: any = null;
-          try {
-            const allSvcs = await getCustomerServices();
-            selectedService = (allSvcs || []).find((s: any) => s.id === userProfile.service_selected);
-          } catch (e) {
-            console.log("[Banner] Error fetching service details:", e);
-          }
+          //   if (totalPaidCount && totalPaidCount > 0) {
+          //     showToast("This offer is for new users only.", "info");
+          //     // If they have a stale NEW_USER claim locally, clear it since they are no longer eligible
+          //     const existing = await getClaimedOffer();
+          //     if (existing && existing.type === "NEW_USER") {
+          //       await clearClaimedOffer();
+          //     }
+          //     return;
+          //   }
+          // }
 
-          if (selectedService) {
-            // Restore claimedOffer to ensure discount applies even if local storage was cleared
-            const claimObject = {
-              type: "PROMOTIONAL_BANNER" as const, // <-- Added "as const" to fix TS error
-              bannerId: banner.id,
-              serviceId: selectedService.id,
-              serviceTitle: selectedService.title,
-              offerPercentage: banner.offer_percentage ?? 0,
-              claimedAt: new Date().toISOString(),
-              userId: session.user.id,
-              source: "promotional_banner",
-            };
-            await setClaimedOffer(claimObject);
+          // Check NEW_USER campaign eligibility
+          if (banner.customer_type === "new") {
+            const userCreatedAt = new Date(session.user.created_at);
 
-            Alert.alert(
-              "Offer Already Selected",
-              `You have already selected ${selectedService.title} for this offer.`,
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "View Service",
-                  onPress: () => navigation.navigate("ServiceDetail", { serviceId: selectedService.id })
-                }
-              ]
+            const offerStart = banner.start_date
+              ? new Date(banner.start_date)
+              : null;
+
+            const offerEnd = banner.end_date ? new Date(banner.end_date) : null;
+
+            const signupWithinCampaign =
+              offerStart &&
+              offerEnd &&
+              !Number.isNaN(userCreatedAt.getTime()) &&
+              !Number.isNaN(offerStart.getTime()) &&
+              !Number.isNaN(offerEnd.getTime()) &&
+              userCreatedAt >= offerStart &&
+              userCreatedAt <= offerEnd;
+
+            console.log(
+              `[PROMO] NEW USER campaign check | ` +
+                `signup:${userCreatedAt.toISOString()} | ` +
+                `start:${offerStart?.toISOString()} | ` +
+                `end:${offerEnd?.toISOString()} | ` +
+                `eligible:${signupWithinCampaign}`,
             );
+
+            // User did not register during this campaign
+            if (!signupWithinCampaign) {
+              showToast(
+                "This offer is only available to users who joined during the offer period.",
+                "info",
+              );
+
+              const existing = await getClaimedOffer();
+
+              if (existing && existing.type === "NEW_USER") {
+                await clearClaimedOffer();
+              }
+
+              return;
+            }
+
+            // // User must also have NO previous paid booking
+            // const { count: totalPaidCount } = await supabase
+            //   .from("bookings")
+            //   .select("id", { count: "exact", head: true })
+            //   .eq("user_id", session.user.id)
+            //   .eq("payment_verified", true)
+            //   .ilike("payment_status", "paid");
+
+            // if (totalPaidCount && totalPaidCount > 0) {
+            //   showToast("This offer is for new users only.", "info");
+
+            //   const existing = await getClaimedOffer();
+
+            //   if (existing && existing.type === "NEW_USER") {
+            //     await clearClaimedOffer();
+            //   }
+
+            //   return;
+            // }
+          }
+        }
+
+        const existingClaim = await getClaimedOffer();
+        console.log("[PROMO] Existing claimed offer:", existingClaim);
+
+        if (existingClaim) {
+          console.log("[COUPON STEP 8] Existing claim:", existingClaim);
+
+          if (existingClaim.bannerId === banner.id) {
+            // It's the same banner. Do not return early.
+            // Allow the flow to continue so the service selection modal opens.
+            console.log(
+              "[PROMO] Same banner already claimed locally, proceeding to service selection.",
+            );
+          } else if (existingClaim.type === "GENERIC_OFFER") {
+            // Preserve generic offers
+            showToast("An offer is already claimed.", "info");
             return;
           } else {
-            // Service missing/deleted, clear invalid selection
-            await updateCustomerProfile({ service_selected: null, promotional_banner_selected: null });
+            // Different banner or stale claim -> clear it to allow the new one
+            console.log(
+              "[COUPON STEP 8] Clearing different/stale claim to allow new banner.",
+            );
+            await clearClaimedOffer();
           }
-        } else {
-          // Different banner or no selection
-          // Allow the flow to continue to the service selection modal
-          // The specific service check will be performed in handleSelectedServiceClaim
         }
 
-        // Check for NEW_USER eligibility if banner is for new users
-        // if (banner.customer_type === "new") {
-        //   const { count: totalPaidCount } = await supabase
-        //     .from("bookings")
-        //     .select("id", { count: "exact", head: true })
-        //     .eq("user_id", session.user.id)
-        //     .eq("payment_verified", true)
-        //     .ilike("payment_status", "paid");
+        // ALWAYS require service selection for promotional banners
+        setActivePromoBanner(banner);
+        setLoadingPromoServices(true);
+        setShowServiceSelectModal(true);
+        setSelectedPromoServiceId(null);
 
-        //   if (totalPaidCount && totalPaidCount > 0) {
-        //     showToast("This offer is for new users only.", "info");
-        //     // If they have a stale NEW_USER claim locally, clear it since they are no longer eligible
-        //     const existing = await getClaimedOffer();
-        //     if (existing && existing.type === "NEW_USER") {
-        //       await clearClaimedOffer();
-        //     }
-        //     return;
-        //   }
-        // }
+        console.log("[PROMO] Fetching services for banner:", banner.id);
 
+        let svcData = null;
 
-        // Check NEW_USER campaign eligibility
-        if (banner.customer_type === "new") {
-          const userCreatedAt = new Date(session.user.created_at);
-
-          const offerStart = banner.start_date
-            ? new Date(banner.start_date)
-            : null;
-
-          const offerEnd = banner.end_date
-            ? new Date(banner.end_date)
-            : null;
-
-          const signupWithinCampaign =
-            offerStart &&
-            offerEnd &&
-            !Number.isNaN(userCreatedAt.getTime()) &&
-            !Number.isNaN(offerStart.getTime()) &&
-            !Number.isNaN(offerEnd.getTime()) &&
-            userCreatedAt >= offerStart &&
-            userCreatedAt <= offerEnd;
-
-          console.log(
-            `[PROMO] NEW USER campaign check | ` +
-            `signup:${userCreatedAt.toISOString()} | ` +
-            `start:${offerStart?.toISOString()} | ` +
-            `end:${offerEnd?.toISOString()} | ` +
-            `eligible:${signupWithinCampaign}`
+        const allSvcs = await getCustomerServices();
+        if (banner.service_scope === "selected") {
+          const rels = await getCustomerPromotionalBannerRelations();
+          const svcRels = (rels?.services || []).filter(
+            (r: any) => r.banner_id === banner.id,
           );
 
-          // User did not register during this campaign
-          if (!signupWithinCampaign) {
-            showToast(
-              "This offer is only available to users who joined during the offer period.",
-              "info"
+          if (svcRels && svcRels.length > 0) {
+            const serviceIds = svcRels.map((r: any) => r.service_id);
+            console.log("[PROMO] Promotional service IDs:", serviceIds);
+            svcData = (allSvcs || []).filter((s: any) =>
+              serviceIds.includes(s.id),
             );
-
-            const existing = await getClaimedOffer();
-
-            if (existing && existing.type === "NEW_USER") {
-              await clearClaimedOffer();
-            }
-
-            return;
           }
-
-          // // User must also have NO previous paid booking
-          // const { count: totalPaidCount } = await supabase
-          //   .from("bookings")
-          //   .select("id", { count: "exact", head: true })
-          //   .eq("user_id", session.user.id)
-          //   .eq("payment_verified", true)
-          //   .ilike("payment_status", "paid");
-
-          // if (totalPaidCount && totalPaidCount > 0) {
-          //   showToast("This offer is for new users only.", "info");
-
-          //   const existing = await getClaimedOffer();
-
-          //   if (existing && existing.type === "NEW_USER") {
-          //     await clearClaimedOffer();
-          //   }
-
-          //   return;
-          // }
-        }
-      }
-
-      const existingClaim = await getClaimedOffer();
-      console.log("[PROMO] Existing claimed offer:", existingClaim);
-
-      if (existingClaim) {
-        console.log("[COUPON STEP 8] Existing claim:", existingClaim);
-
-        if (existingClaim.bannerId === banner.id) {
-          // It's the same banner. Do not return early.
-          // Allow the flow to continue so the service selection modal opens.
-          console.log("[PROMO] Same banner already claimed locally, proceeding to service selection.");
-        } else if (existingClaim.type === "GENERIC_OFFER") {
-          // Preserve generic offers
-          showToast("An offer is already claimed.", "info");
-          return;
         } else {
-          // Different banner or stale claim -> clear it to allow the new one
-          console.log("[COUPON STEP 8] Clearing different/stale claim to allow new banner.");
-          await clearClaimedOffer();
+          // Fetch all services if scope is not 'selected'
+          svcData = allSvcs;
         }
-      }
 
-      // ALWAYS require service selection for promotional banners
-      setActivePromoBanner(banner);
-      setLoadingPromoServices(true);
-      setShowServiceSelectModal(true);
-      setSelectedPromoServiceId(null);
-
-      console.log("[PROMO] Fetching services for banner:", banner.id);
-
-      let svcData = null;
-
-      const allSvcs = await getCustomerServices();
-      if (banner.service_scope === "selected") {
-        const rels = await getCustomerPromotionalBannerRelations();
-        const svcRels = (rels?.services || []).filter((r: any) => r.banner_id === banner.id);
-
-        if (svcRels && svcRels.length > 0) {
-          const serviceIds = svcRels.map((r: any) => r.service_id);
-          console.log("[PROMO] Promotional service IDs:", serviceIds);
-          svcData = (allSvcs || []).filter((s: any) => serviceIds.includes(s.id));
+        if (svcData) {
+          console.log("[PROMO] Services displayed:", svcData);
+          setPromoBannerServices(svcData);
+        } else {
+          setPromoBannerServices([]);
         }
-      } else {
-        // Fetch all services if scope is not 'selected'
-        svcData = allSvcs;
-      }
 
-      if (svcData) {
-        console.log("[PROMO] Services displayed:", svcData);
-        setPromoBannerServices(svcData);
-      } else {
-        setPromoBannerServices([]);
+        setLoadingPromoServices(false);
+      } catch (e) {
+        console.error("Error claiming banner offer:", e);
+        showToast("Failed to claim offer. Please try again.", "error");
       }
-
-      setLoadingPromoServices(false);
-    } catch (e) {
-      console.error("Error claiming banner offer:", e);
-      showToast("Failed to claim offer. Please try again.", "error");
-    }
-  }, [showToast]);
+    },
+    [showToast],
+  );
 
   const handleSelectedServiceClaim = async () => {
     if (!selectedPromoServiceId || !activePromoBanner) return;
 
-    const selectedSvc = promoBannerServices.find(s => s.id === selectedPromoServiceId);
+    const selectedSvc = promoBannerServices.find(
+      (s) => s.id === selectedPromoServiceId,
+    );
     if (!selectedSvc) return;
 
     console.log("[PROMO] Selected service:", selectedSvc);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       // if (session?.user) {
       //   const { count } = await supabase
       //     .from("bookings")
@@ -6552,15 +6496,17 @@ const fetchMainCategories = useCallback(async () => {
       //   }
       // }
 
-
       if (session?.user) {
         // Check if this specific selected booking is COMPLETED via customer API
         let promoBookings: any[] = [];
         try {
           const myBookings = await getCustomerMyBookings();
-          promoBookings = (myBookings || []).filter((b: any) =>
-            b.promotional_banner_id === activePromoBanner.id &&
-            String(b.work_status || "").trim().toUpperCase() === "COMPLETED"
+          promoBookings = (myBookings || []).filter(
+            (b: any) =>
+              b.promotional_banner_id === activePromoBanner.id &&
+              String(b.work_status || "")
+                .trim()
+                .toUpperCase() === "COMPLETED",
           );
         } catch (existingErr) {
           console.error("[PROMO] reuse check error:", existingErr);
@@ -6615,16 +6561,16 @@ const fetchMainCategories = useCallback(async () => {
 
           console.log(
             `[PROMO] Selected service NEW USER check | ` +
-            `signup:${userCreatedAt.toISOString()} | ` +
-            `start:${offerStart?.toISOString()} | ` +
-            `end:${offerEnd?.toISOString()} | ` +
-            `eligible:${signupWithinCampaign}`
+              `signup:${userCreatedAt.toISOString()} | ` +
+              `start:${offerStart?.toISOString()} | ` +
+              `end:${offerEnd?.toISOString()} | ` +
+              `eligible:${signupWithinCampaign}`,
           );
 
           if (!signupWithinCampaign) {
             showToast(
               "This offer is only available to users who joined during the offer period.",
-              "info"
+              "info",
             );
             setShowServiceSelectModal(false);
             return;
@@ -6644,12 +6590,21 @@ const fetchMainCategories = useCallback(async () => {
           // }
         }
       }
-      console.log("[PROMO] Claiming selected service offer:", selectedSvc.title);
+      console.log(
+        "[PROMO] Claiming selected service offer:",
+        selectedSvc.title,
+      );
       // ALWAYS treat promotional banner claims as PROMOTIONAL_BANNER
       const claimType = "PROMOTIONAL_BANNER";
-      console.log("[COUPON STEP 8] Banner customer_type:", activePromoBanner.customer_type);
+      console.log(
+        "[COUPON STEP 8] Banner customer_type:",
+        activePromoBanner.customer_type,
+      );
       console.log("[COUPON STEP 8] Claim type:", claimType);
-      console.log("[COUPON STEP 8] Offer percentage:", activePromoBanner.offer_percentage);
+      console.log(
+        "[COUPON STEP 8] Offer percentage:",
+        activePromoBanner.offer_percentage,
+      );
 
       const claimObject: any = {
         type: claimType,
@@ -6677,97 +6632,89 @@ const fetchMainCategories = useCallback(async () => {
 
       setShowServiceSelectModal(false);
       console.log("[PROMO] Claim successful");
-      showToast(`Offer Claimed! ${activePromoBanner.offer_percentage}% discount is ready for your booking.`, "success");
+      showToast(
+        `Offer Claimed! ${activePromoBanner.offer_percentage}% discount is ready for your booking.`,
+        "success",
+      );
     } catch (e) {
       console.error("Error claiming selected service offer:", e);
       showToast("Failed to claim offer. Please try again.", "error");
     }
   };
 
-  
-const fetchHeroBanners = useCallback(async () => {
-  const fallbackBanners: ImageSourcePropType[] = [
-    require("../../assets/images/1.png"),
-    require("../../assets/images/2.png"),
-    require("../../assets/images/3.png"),
-  ];
+  const fetchHeroBanners = useCallback(async () => {
+    const fallbackBanners: ImageSourcePropType[] = [
+      require("../../assets/images/1.png"),
+      require("../../assets/images/2.png"),
+      require("../../assets/images/3.png"),
+    ];
 
-  try {
-    console.log(
-      "[CUSTOMER FASTAPI] Hero banners request started"
-    );
+    try {
+      console.log("[CUSTOMER FASTAPI] Hero banners request started");
 
-    const data = await getCustomerHeroBanners();
+      const data = await getCustomerHeroBanners();
 
-    console.log(
-      "[CUSTOMER FASTAPI] Hero banners received:",
-      data.length
-    );
+      console.log("[CUSTOMER FASTAPI] Hero banners received:", data.length);
 
-    if (data.length > 0) {
-      const bannerUrls = data.map((banner) => ({
-        uri: `${SUPABASE_URL}/storage/v1/object/public/hero-images/${banner.image_path}`,
-      }));
+      if (data.length > 0) {
+        const bannerUrls = data.map((banner) => ({
+          uri: `${SUPABASE_URL}/storage/v1/object/public/hero-images/${banner.image_path}`,
+        }));
 
-      setHeroBanners(bannerUrls);
+        setHeroBanners(bannerUrls);
+        return;
+      }
+
+      setHeroBanners(fallbackBanners);
+    } catch (error) {
+      console.error("[CUSTOMER FASTAPI] Hero banners request failed:", error);
+
+      setHeroBanners(fallbackBanners);
+    }
+  }, []);
+
+  // ✅ Fetch promotional banners with eligibility checks
+
+  const fetchPromotionalBanners = useCallback(async () => {
+    let data: PromotionalBanner[];
+
+    try {
+      console.log("[CUSTOMER FASTAPI] Promotional banners request started");
+
+      const apiBanners = await getCustomerPromotionalBanners();
+
+      console.log(
+        "[CUSTOMER FASTAPI] Promotional banners received:",
+        apiBanners.length,
+      );
+
+      data = apiBanners.map(
+        (banner): PromotionalBanner => ({
+          id: banner.id,
+          image_url: banner.image_url ?? "",
+          is_active: banner.is_active,
+          display_order: banner.display_order,
+          start_date: banner.start_date,
+          end_date: banner.end_date,
+          offer_percentage: banner.offer_percentage ?? undefined,
+          service_scope: banner.service_scope ?? undefined,
+          customer_type: banner.customer_type ?? undefined,
+          pincode_scope: banner.pincode_scope ?? undefined,
+        }),
+      );
+    } catch (error) {
+      console.error(
+        "[CUSTOMER FASTAPI] Promotional banners request failed:",
+        error,
+      );
       return;
     }
 
-    setHeroBanners(fallbackBanners);
-  } catch (error) {
-    console.error(
-      "[CUSTOMER FASTAPI] Hero banners request failed:",
-      error
-    );
-
-    setHeroBanners(fallbackBanners);
-  }
-}, []);
-
-
-
-  // ✅ Fetch promotional banners with eligibility checks
- 
-const fetchPromotionalBanners = useCallback(async () => {
-  let data: PromotionalBanner[];
-
-  try {
-    console.log(
-      "[CUSTOMER FASTAPI] Promotional banners request started"
-    );
-
-    const apiBanners = await getCustomerPromotionalBanners();
-
-    console.log(
-      "[CUSTOMER FASTAPI] Promotional banners received:",
-      apiBanners.length
-    );
-
-    data = apiBanners.map((banner): PromotionalBanner => ({
-      id: banner.id,
-      image_url: banner.image_url ?? "",
-      is_active: banner.is_active,
-      display_order: banner.display_order,
-      start_date: banner.start_date,
-      end_date: banner.end_date,
-      offer_percentage: banner.offer_percentage ?? undefined,
-      service_scope: banner.service_scope ?? undefined,
-      customer_type: banner.customer_type ?? undefined,
-      pincode_scope: banner.pincode_scope ?? undefined,
-    }));
-  } catch (error) {
-    console.error(
-      "[CUSTOMER FASTAPI] Promotional banners request failed:",
-      error
-    );
-    return;
-  }
-
-
-
     if (data) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         let userId = session?.user?.id;
 
         // Fetch banner IDs the user has already CONSUMED via backend customer API
@@ -6775,13 +6722,16 @@ const fetchPromotionalBanners = useCallback(async () => {
         if (session?.user) {
           try {
             const consumedList = await getCustomerConsumedPromotionalBanners();
-            (consumedList || []).forEach(id => consumedBannerIds.add(id));
+            (consumedList || []).forEach((id) => consumedBannerIds.add(id));
           } catch (usedError) {
             console.log("[Banner] error fetching consumed banners:", usedError);
           }
         }
 
-        console.log("[Banner] consumedBannerIds:", Array.from(consumedBannerIds));
+        console.log(
+          "[Banner] consumedBannerIds:",
+          Array.from(consumedBannerIds),
+        );
 
         let customerPincode: string | null = null;
         let customerHubIds: string[] = [];
@@ -6795,7 +6745,9 @@ const fetchPromotionalBanners = useCallback(async () => {
           if (customerPincode) {
             const pinCheck = await checkPincodeServiceable(customerPincode);
             if (pinCheck && pinCheck.locations) {
-              customerHubIds = pinCheck.locations.map((h: any) => h.id || h.location_id);
+              customerHubIds = pinCheck.locations.map(
+                (h: any) => h.id || h.location_id,
+              );
             }
           }
         } catch (e) {
@@ -6814,7 +6766,7 @@ const fetchPromotionalBanners = useCallback(async () => {
 
         const bannerLocMap: Record<string, string[]> = {};
         if (bannerLocations) {
-          bannerLocations.forEach(bl => {
+          bannerLocations.forEach((bl) => {
             if (!bannerLocMap[bl.banner_id]) {
               bannerLocMap[bl.banner_id] = [];
             }
@@ -6824,7 +6776,7 @@ const fetchPromotionalBanners = useCallback(async () => {
 
         const bannerSvcMap: Record<string, string[]> = {};
         if (bannerServices) {
-          bannerServices.forEach(bs => {
+          bannerServices.forEach((bs) => {
             if (!bannerSvcMap[bs.banner_id]) {
               bannerSvcMap[bs.banner_id] = [];
             }
@@ -6837,13 +6789,16 @@ const fetchPromotionalBanners = useCallback(async () => {
         console.log("=== BANNER ELIGIBILITY CHECK ===");
         console.log("User ID:", userId);
         console.log("Consumed Banner IDs:", Array.from(consumedBannerIds));
-        console.log("Customer Pincode:", customerPincode); console.log("Resolved Hub IDs:", customerHubIds);
+        console.log("Customer Pincode:", customerPincode);
+        console.log("Resolved Hub IDs:", customerHubIds);
         console.log("Current Service ID:", currentServiceId);
 
-        const eligibleBanners = data.filter(banner => {
+        const eligibleBanners = data.filter((banner) => {
           // 1. Hide if this user has already consumed THIS banner
           if (consumedBannerIds.has(banner.id)) {
-            console.log(`Banner ${banner.id} hidden — already consumed by user.`);
+            console.log(
+              `Banner ${banner.id} hidden — already consumed by user.`,
+            );
             return false;
           }
 
@@ -6858,9 +6813,6 @@ const fetchPromotionalBanners = useCallback(async () => {
           // } else if (!banner.customer_type || banner.customer_type === "everyone") {
           //   customerEligible = true;
           // }
-
-
-
 
           // 2. Customer type + signup date eligibility
           let customerEligible = true;
@@ -6877,7 +6829,7 @@ const fetchPromotionalBanners = useCallback(async () => {
               customerEligible = false;
 
               console.log(
-                `[Banner] ${banner.id} hidden — no authenticated user/signup date.`
+                `[Banner] ${banner.id} hidden — no authenticated user/signup date.`,
               );
             } else {
               const userCreatedAt = new Date(session.user.created_at);
@@ -6898,19 +6850,18 @@ const fetchPromotionalBanners = useCallback(async () => {
                 customerEligible = false;
 
                 console.log(
-                  `[Banner] ${banner.id} hidden — invalid campaign dates or signup date.`
+                  `[Banner] ${banner.id} hidden — invalid campaign dates or signup date.`,
                 );
               } else {
                 customerEligible =
-                  userCreatedAt >= offerStart &&
-                  userCreatedAt <= offerEnd;
+                  userCreatedAt >= offerStart && userCreatedAt <= offerEnd;
 
                 console.log(
                   `[Banner] NEW USER date check | ` +
-                  `signup:${userCreatedAt.toISOString()} | ` +
-                  `start:${offerStart.toISOString()} | ` +
-                  `end:${offerEnd.toISOString()} | ` +
-                  `eligible:${customerEligible}`
+                    `signup:${userCreatedAt.toISOString()} | ` +
+                    `start:${offerStart.toISOString()} | ` +
+                    `end:${offerEnd.toISOString()} | ` +
+                    `eligible:${customerEligible}`,
                 );
               }
             }
@@ -6929,32 +6880,26 @@ const fetchPromotionalBanners = useCallback(async () => {
             locationEligible = true;
           } else if (banner.pincode_scope === "selected") {
             const allowedLocs = bannerLocMap[banner.id] || [];
-            locationEligible = customerHubIds.some(hubId => allowedLocs.includes(hubId));
+            locationEligible = customerHubIds.some((hubId) =>
+              allowedLocs.includes(hubId),
+            );
           }
 
           const finalEligible = customerEligible && locationEligible;
 
           console.log(
-            `Banner ${banner.id} | consumed:${consumedBannerIds.has(banner.id)} | CustType:${banner.customer_type}(${customerEligible}) | LocScope:${banner.pincode_scope}(${locationEligible}) | Final:${finalEligible}`
+            `Banner ${banner.id} | consumed:${consumedBannerIds.has(banner.id)} | CustType:${banner.customer_type}(${customerEligible}) | LocScope:${banner.pincode_scope}(${locationEligible}) | Final:${finalEligible}`,
           );
           return finalEligible;
         });
 
+        console.log("================================");
+        setPromotionalBanners(eligibleBanners);
+      } catch (err) {
+        console.error("Error evaluating banner eligibility:", err);
 
-       
-console.log("================================");
-setPromotionalBanners(eligibleBanners);
-
-} catch (err) {
-  console.error("Error evaluating banner eligibility:", err);
-
-  
-setPromotionalBanners(data);
-
-}
-
-
-
+        setPromotionalBanners(data);
+      }
     }
   }, []);
 
@@ -6962,32 +6907,18 @@ setPromotionalBanners(data);
     if (hasShownPopupThisSession) return;
 
     const popupData = await getCustomerAppPopups().catch((error) => {
-  console.error(
-    "[CUSTOMER FASTAPI] App popups request failed:",
-    error
-  );
-  return [];
-});
+      console.error("[CUSTOMER FASTAPI] App popups request failed:", error);
+      return [];
+    });
 
-console.log(
-  "[CUSTOMER FASTAPI] App popups received:",
-  popupData.length
-);
+    console.log("[CUSTOMER FASTAPI] App popups received:", popupData.length);
 
-    
-const offersData = await getCustomerOffers().catch((error) => {
-  console.error(
-    "[CUSTOMER FASTAPI] Popup offers request failed:",
-    error
-  );
-  return [];
-});
+    const offersData = await getCustomerOffers().catch((error) => {
+      console.error("[CUSTOMER FASTAPI] Popup offers request failed:", error);
+      return [];
+    });
 
-console.log(
-  "[CUSTOMER FASTAPI] Popup offers received:",
-  offersData.length
-);
-
+    console.log("[CUSTOMER FASTAPI] Popup offers received:", offersData.length);
 
     if (popupData && popupData.length > 0) {
       setAppPopups(popupData);
@@ -7013,11 +6944,8 @@ console.log(
       try {
         await Promise.all([fetchMainCategories(), fetchServices()]);
 
-        await Promise.all([
-  fetchHeroBanners(),
-  fetchPopups(),
-]);
-        
+        await Promise.all([fetchHeroBanners(), fetchPopups()]);
+
         await checkWelcomeReward();
         await checkSignupOfferReward();
       } catch (err) {
@@ -7034,20 +6962,26 @@ console.log(
 
     return () => interactionPromise.cancel();
   }, [
-  fetchServices,
-  fetchHeroBanners,
-  fetchPopups,
-  fetchMainCategories,
-  checkWelcomeReward,
-  checkSignupOfferReward
-]);
-
+    fetchServices,
+    fetchHeroBanners,
+    fetchPopups,
+    fetchMainCategories,
+    checkWelcomeReward,
+    checkSignupOfferReward,
+  ]);
 
   // 👇👇👇 ADD THE FOCUS BLOCK HERE 👇👇👇
   useFocusEffect(
     useCallback(() => {
       console.log("[Banner Focus] Home focused → refreshing banners");
-      fetchPromotionalBanners();
+
+      fetchPromotionalBanners()
+        .catch((error) => {
+          console.error("Error loading promotional banners:", error);
+        })
+        .finally(() => {
+          setLoadingInitialBanners(false);
+        });
 
       const interval = setInterval(() => {
         console.log("[Banner Poll] 30s polling refresh");
@@ -7055,10 +6989,8 @@ console.log(
       }, 30_000);
 
       return () => clearInterval(interval);
-    }, [fetchPromotionalBanners])
+    }, [fetchPromotionalBanners]),
   );
-
-
 
   // ⬇️⬇️⬇️ ADD THE REALTIME USEEFFECT HERE ⬇️⬇️⬇️
   useEffect(() => {
@@ -7066,7 +6998,9 @@ console.log(
     let isCancelled = false;
 
     const setupRealtime = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
       if (!userId || isCancelled) return;
@@ -7084,8 +7018,12 @@ console.log(
             filter: `user_id=eq.${userId}`,
           },
           (payload: any) => {
-            const newStatus = String(payload.new?.work_status || "").toUpperCase();
-            const oldStatus = String(payload.old?.work_status || "").toUpperCase();
+            const newStatus = String(
+              payload.new?.work_status || "",
+            ).toUpperCase();
+            const oldStatus = String(
+              payload.old?.work_status || "",
+            ).toUpperCase();
             const bannerId = payload.new?.promotional_banner_id;
 
             console.log(
@@ -7093,7 +7031,7 @@ console.log(
               payload.new?.id,
               `${oldStatus} → ${newStatus}`,
               "bannerId:",
-              bannerId
+              bannerId,
             );
 
             // if (newStatus === "COMPLETED" && oldStatus !== "COMPLETED" && bannerId) {
@@ -7101,15 +7039,25 @@ console.log(
             //   fetchPromotionalBanners();
             // }
 
-            const becameCompleted = newStatus === "COMPLETED" && oldStatus !== "COMPLETED";
-            const becameCancelled = newStatus === "CANCELLED" && oldStatus !== "CANCELLED";
-            const becameFailed = newStatus === "PAYMENT FAILED" && oldStatus !== "PAYMENT FAILED";
+            const becameCompleted =
+              newStatus === "COMPLETED" && oldStatus !== "COMPLETED";
+            const becameCancelled =
+              newStatus === "CANCELLED" && oldStatus !== "CANCELLED";
+            const becameFailed =
+              newStatus === "PAYMENT FAILED" && oldStatus !== "PAYMENT FAILED";
 
-            if (bannerId && (becameCompleted || becameCancelled || becameFailed)) {
-              console.log("[Banner Realtime] Refreshing banners due to status change →", newStatus);
+            if (
+              bannerId &&
+              (becameCompleted || becameCancelled || becameFailed)
+            ) {
+              console.log(
+                "[Banner Realtime] Refreshing banners due to status change →",
+                newStatus,
+              );
               fetchPromotionalBanners();
             }
-          })
+          },
+        )
         .subscribe((status) => {
           console.log("[Banner Realtime] Subscription status:", status);
         });
@@ -7128,7 +7076,13 @@ console.log(
   // ⬆️⬆️⬆️ END OF REALTIME USEEFFECT ⬆️⬆️⬆️
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchMainCategories(), fetchServices(), fetchHeroBanners(), fetchPromotionalBanners(), fetchPopups()]);
+    await Promise.all([
+      fetchMainCategories(),
+      fetchServices(),
+      fetchHeroBanners(),
+      fetchPromotionalBanners(),
+      fetchPopups(),
+    ]);
     setRefreshing(false);
   };
 
@@ -7137,7 +7091,7 @@ console.log(
 
     // Filter services by active main category
     const filteredServices = activeMainCategory
-      ? services.filter(s => s.main_category_id === activeMainCategory)
+      ? services.filter((s) => s.main_category_id === activeMainCategory)
       : services;
 
     filteredServices.forEach((s) => {
@@ -7146,10 +7100,15 @@ console.log(
       }
     });
 
-    const sorted = Array.from(categoryMap.entries()).sort((a, b) => a[1] - b[1]);
+    const sorted = Array.from(categoryMap.entries()).sort(
+      (a, b) => a[1] - b[1],
+    );
 
     const result = sorted.map(([type]) => ({
-      label: type.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      label: type
+        .toLowerCase()
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
       value: type,
     }));
 
@@ -7162,7 +7121,7 @@ console.log(
   // Sync activeCategory when tabs change
   useEffect(() => {
     if (tabs.length > 0) {
-      const exists = tabs.find(t => t.value === activeCategory);
+      const exists = tabs.find((t) => t.value === activeCategory);
       if (!exists) setActiveCategory(tabs[0].value);
     }
   }, [tabs, activeCategory]);
@@ -7172,11 +7131,14 @@ console.log(
     if (!selectedMainCategoryForSheet) return [];
 
     // Use a map to track unique types AND their first found icon
-    const typeMap = new Map<string, { label: string, value: string, icon: string | null, order?: number }>();
+    const typeMap = new Map<
+      string,
+      { label: string; value: string; icon: string | null; order?: number }
+    >();
 
     services
-      .filter(s => s.main_category_id === selectedMainCategoryForSheet.id)
-      .forEach(s => {
+      .filter((s) => s.main_category_id === selectedMainCategoryForSheet.id)
+      .forEach((s) => {
         if (s.service_type) {
           const type = s.service_type;
           const existing = typeMap.get(type);
@@ -7184,10 +7146,13 @@ console.log(
           // If we haven't found this type yet, OR if we found it but it didn't have an icon and this one does
           if (!existing || (!existing.icon && s.category_icon_url)) {
             typeMap.set(type, {
-              label: type.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+              label: type
+                .toLowerCase()
+                .replace(/_/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase()),
               value: type,
               icon: s.category_icon_url || existing?.icon || null,
-              order: s.category_order ?? existing?.order ?? 9999
+              order: s.category_order ?? existing?.order ?? 9999,
             });
           }
         }
@@ -7201,16 +7166,16 @@ console.log(
         "Kitchen Utensil Cleaning",
         "Clothes Ironing",
         "Clothes Folding",
-        "Floor Mopping"
+        "Floor Mopping",
       ];
 
-      instaItems.forEach(label => {
-        if (!result.some(r => r.label === label)) {
+      instaItems.forEach((label) => {
+        if (!result.some((r) => r.label === label)) {
           result.push({
             label,
             value: label.toUpperCase().replace(/\s+/g, "_"),
             icon: null,
-            order: 9999
+            order: 9999,
           });
         }
       });
@@ -7228,24 +7193,33 @@ console.log(
 
   // ✅ New hook to precalculate all subcategories for all main categories to render on HomeScreen
   const allSubCategoriesByMainCategory = useMemo(() => {
-    const result = new Map<string, { label: string, value: string, icon: string | null, order?: number }[]>();
+    const result = new Map<
+      string,
+      { label: string; value: string; icon: string | null; order?: number }[]
+    >();
 
-    mainCategories.forEach(mainCat => {
-      const typeMap = new Map<string, { label: string, value: string, icon: string | null, order?: number }>();
+    mainCategories.forEach((mainCat) => {
+      const typeMap = new Map<
+        string,
+        { label: string; value: string; icon: string | null; order?: number }
+      >();
 
       services
-        .filter(s => s.main_category_id === mainCat.id)
-        .forEach(s => {
+        .filter((s) => s.main_category_id === mainCat.id)
+        .forEach((s) => {
           if (s.service_type) {
             const type = s.service_type;
             const existing = typeMap.get(type);
 
             if (!existing || (!existing.icon && s.category_icon_url)) {
               typeMap.set(type, {
-                label: type.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                label: type
+                  .toLowerCase()
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (c) => c.toUpperCase()),
                 value: type,
                 icon: s.category_icon_url || existing?.icon || null,
-                order: s.category_order ?? existing?.order ?? 9999
+                order: s.category_order ?? existing?.order ?? 9999,
               });
             }
           }
@@ -7253,21 +7227,24 @@ console.log(
 
       const catSubs = Array.from(typeMap.values());
 
-      if (mainCat.name === "Insta Help" || mainCat.name === "Express Home Cleaning") {
+      if (
+        mainCat.name === "Insta Help" ||
+        mainCat.name === "Express Home Cleaning"
+      ) {
         const instaItems = [
           "Kitchen Utensil Cleaning",
           "Clothes Ironing",
           "Clothes Folding",
-          "Floor Mopping"
+          "Floor Mopping",
         ];
 
-        instaItems.forEach(label => {
-          if (!catSubs.some(r => r.label === label)) {
+        instaItems.forEach((label) => {
+          if (!catSubs.some((r) => r.label === label)) {
             catSubs.push({
               label,
               value: label.toUpperCase().replace(/\s+/g, "_"),
               icon: null,
-              order: 9999
+              order: 9999,
             });
           }
         });
@@ -7289,23 +7266,31 @@ console.log(
   const getServicesForCategory = useCallback(
     (categoryValue: string) => {
       const search = (searchText ?? "").trim().toLowerCase();
-      return services.filter((service) => {
-        // Must match active Main Category if one is selected
-        if (activeMainCategory && service.main_category_id !== activeMainCategory) return false;
+      return services
+        .filter((service) => {
+          // Must match active Main Category if one is selected
+          if (
+            activeMainCategory &&
+            service.main_category_id !== activeMainCategory
+          )
+            return false;
 
-        const matchesCategory = categoryValue === "ALL" || service.service_type === categoryValue;
-        if (!matchesCategory) return false;
-        if (search.length === 0) return true;
+          const matchesCategory =
+            categoryValue === "ALL" || service.service_type === categoryValue;
+          if (!matchesCategory) return false;
+          if (search.length === 0) return true;
 
-        const title = (service.title ?? "").toLowerCase();
-        const type = (service.service_type ?? "").toLowerCase();
+          const title = (service.title ?? "").toLowerCase();
+          const type = (service.service_type ?? "").toLowerCase();
 
-        if (title.includes(search) || type.includes(search)) return true;
-        if (search.length > 3 && getLevenshteinDistance(search, type) <= 2) return true;
-        return false;
-      }).sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
+          if (title.includes(search) || type.includes(search)) return true;
+          if (search.length > 3 && getLevenshteinDistance(search, type) <= 2)
+            return true;
+          return false;
+        })
+        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
     },
-    [services, searchText, activeMainCategory]
+    [services, searchText, activeMainCategory],
   );
 
   const handleCategoryChange = useCallback(
@@ -7315,10 +7300,12 @@ console.log(
       if (idx >= 0 && pagerRef.current) {
         isProgrammaticScroll.current = true;
         pagerRef.current.scrollToIndex({ index: idx, animated: true });
-        setTimeout(() => { isProgrammaticScroll.current = false; }, 400);
+        setTimeout(() => {
+          isProgrammaticScroll.current = false;
+        }, 400);
       }
     },
-    [tabs]
+    [tabs],
   );
 
   const onPagerScrollEnd = useCallback(
@@ -7327,7 +7314,7 @@ console.log(
       const idx = Math.round(e.nativeEvent.contentOffset.x / width);
       if (tabs[idx]) setActiveCategory(tabs[idx].value);
     },
-    [tabs]
+    [tabs],
   );
 
   const renderCategoryPage = useCallback(
@@ -7337,8 +7324,16 @@ console.log(
         <View style={{ width }}>
           {pageServices.length === 0 ? (
             <View style={{ marginTop: 60, alignItems: "center" }}>
-              <Ionicons name="search-outline" size={40} color={theme.textMuted} />
-              <Text style={{ marginTop: 12, color: theme.textMuted, fontSize: 16 }}>{t("home.noResults")}</Text>
+              <Ionicons
+                name="search-outline"
+                size={40}
+                color={theme.textMuted}
+              />
+              <Text
+                style={{ marginTop: 12, color: theme.textMuted, fontSize: 16 }}
+              >
+                {t("home.noResults")}
+              </Text>
             </View>
           ) : (
             <FlatList
@@ -7348,7 +7343,12 @@ console.log(
               numColumns={2}
               columnWrapperStyle={{ gap: 12, paddingHorizontal: 12 }}
               renderItem={({ item }) => (
-                <ServiceCard service={item} onPress={() => navigation.navigate("ServiceDetail", { service: item })} />
+                <ServiceCard
+                  service={item}
+                  onPress={() =>
+                    navigation.navigate("ServiceDetail", { service: item })
+                  }
+                />
               )}
               contentContainerStyle={{ paddingBottom: 16 }}
               onContentSizeChange={(_, h) => {
@@ -7361,15 +7361,16 @@ console.log(
         </View>
       );
     },
-    [getServicesForCategory, navigation, t, theme, measuredHeights]
+    [getServicesForCategory, navigation, t, theme, measuredHeights],
   );
 
   const activeCategoryServices = getServicesForCategory(activeCategory);
   const CARD_ROW_HEIGHT = 320; // Safe fallback height to prevent any layout cutoffs
   const serviceRows = Math.max(1, Math.ceil(activeCategoryServices.length / 2));
-  const pagerHeight = activeCategoryServices.length === 0
-    ? 150
-    : (measuredHeights[activeCategory] || (serviceRows * CARD_ROW_HEIGHT));
+  const pagerHeight =
+    activeCategoryServices.length === 0
+      ? 150
+      : measuredHeights[activeCategory] || serviceRows * CARD_ROW_HEIGHT;
 
   // // Auto-slide effect
   // useEffect(() => {
@@ -7386,11 +7387,10 @@ console.log(
   //   return () => clearInterval(interval);
   // }, [heroBanners.length, isUserSwiping]);
 
-
-
   // ✅ Auto-advance the APP_POPUP carousel every 3 seconds
   useEffect(() => {
-    if (!showPopup || popupType !== "APP_POPUP" || appPopups.length <= 1) return;
+    if (!showPopup || popupType !== "APP_POPUP" || appPopups.length <= 1)
+      return;
 
     const interval = setInterval(() => {
       setPopupIndex((prev) => {
@@ -7405,40 +7405,55 @@ console.log(
 
   const navigateToExpressCleaning = useCallback(() => {
     // Check if it's a specific service
-    const expressService = services.find(s => s.title?.toLowerCase().includes("express"));
+    const expressService = services.find((s) =>
+      s.title?.toLowerCase().includes("express"),
+    );
     if (expressService) {
       navigation.navigate("ServiceDetail", { service: expressService });
       return;
     }
 
     // Check if it's a main category
-    const expressCategory = mainCategories.find(c => c.name.toLowerCase().includes("express"));
+    const expressCategory = mainCategories.find((c) =>
+      c.name.toLowerCase().includes("express"),
+    );
     if (expressCategory) {
       const subs = allSubCategoriesByMainCategory.get(expressCategory.id) || [];
       navigation.navigate("CategoryServices", {
         mainCategoryName: expressCategory.name,
         mainCategoryId: expressCategory.id,
-        subCategories: subs
+        subCategories: subs,
       });
       return;
     }
 
     // Fallback
     scrollRef.current?.scrollTo({ y: servicesY || 0, animated: true });
-  }, [services, mainCategories, allSubCategoriesByMainCategory, navigation, servicesY]);
-
+  }, [
+    services,
+    mainCategories,
+    allSubCategoriesByMainCategory,
+    navigation,
+    servicesY,
+  ]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <SafeAreaView style={{ backgroundColor: "#FFC928", flex: 0 }} edges={["top"]} />
+      <SafeAreaView
+        style={{ backgroundColor: "#FFC928", flex: 0 }}
+        edges={["top"]}
+      />
       <StatusBar barStyle="dark-content" backgroundColor="#FFC928" />
 
+      <LoadingOverlay
+        visible={isFocused && isInitialLoading && !refreshing}
+        message="Loading your services..."
+      />
 
       <ScrollView
         ref={scrollRef}
         onScroll={(e) => setShowGoUp(e.nativeEvent.contentOffset.y > 200)}
         scrollEventThrottle={16}
-
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -7449,7 +7464,10 @@ console.log(
             progressBackgroundColor={theme.background}
           />
         }
-        contentContainerStyle={[{ backgroundColor: theme.background }, bottomNavPadding]}
+        contentContainerStyle={[
+          { backgroundColor: theme.background },
+          bottomNavPadding,
+        ]}
       >
         {/* 1. Header (Logo + Search) */}
         <Header />
@@ -7458,36 +7476,59 @@ console.log(
         <HomeHero onBookNow={navigateToExpressCleaning} />
 
         {/* New User Promo Banner (Matching Website Image 1) */}
-        <PromotionalBannerSlider banners={promotionalBanners} theme={theme} onBannerPress={handleBannerPress} />
-
+        <PromotionalBannerSlider
+          banners={promotionalBanners}
+          theme={theme}
+          onBannerPress={handleBannerPress}
+        />
 
         {/* 3. Main Category Grid (Explore all services) */}
         {mainCategories.length > 0 && (
-          <View style={styles.gridContainer} onLayout={(e) => setServicesY(e.nativeEvent.layout.y)}>
+          <View
+            style={styles.gridContainer}
+            onLayout={(e) => setServicesY(e.nativeEvent.layout.y)}
+          >
             <View style={styles.grid}>
               {mainCategories.map((mainCat) => (
                 <Pressable
                   key={mainCat.id}
                   style={styles.gridItem}
                   onPress={() => {
-                    const subs = allSubCategoriesByMainCategory.get(mainCat.id) || [];
+                    const subs =
+                      allSubCategoriesByMainCategory.get(mainCat.id) || [];
                     navigation.navigate("CategoryServices", {
                       mainCategoryName: mainCat.name,
                       mainCategoryId: mainCat.id,
-                      subCategories: subs
+                      subCategories: subs,
                     });
                   }}
                 >
                   {({ pressed }) => (
                     <>
-                      <View style={[styles.gridIconContainer, pressed && styles.gridItemActive]}>
+                      <View
+                        style={[
+                          styles.gridIconContainer,
+                          pressed && styles.gridItemActive,
+                        ]}
+                      >
                         {mainCat.icon_url ? (
-                          <Image source={{ uri: mainCat.icon_url }} style={styles.gridIcon} contentFit="contain" />
+                          <Image
+                            source={{ uri: mainCat.icon_url }}
+                            style={styles.gridIcon}
+                            contentFit="contain"
+                          />
                         ) : (
-                          <Ionicons name="apps-outline" size={32} color={theme.primary} />
+                          <Ionicons
+                            name="apps-outline"
+                            size={32}
+                            color={theme.primary}
+                          />
                         )}
                       </View>
-                      <Text style={[styles.gridLabel, { color: theme.text }]} numberOfLines={2}>
+                      <Text
+                        style={[styles.gridLabel, { color: theme.text }]}
+                        numberOfLines={2}
+                      >
                         {mainCat.name}
                       </Text>
                     </>
@@ -7498,29 +7539,50 @@ console.log(
           </View>
         )}
 
-
         {/* 6. Why Choose Us Section */}
         <WhyChooseUs onBookNow={navigateToExpressCleaning} />
       </ScrollView>
 
       {/* Popups (Festive & Offers) */}
-      <Modal visible={showPopup && !!popupType} transparent animationType="fade" onRequestClose={() => setShowPopup(false)}>
-        <Pressable style={popupStyles.overlay} onPress={() => {
-          if (popupType === "APP_POPUP" && activeOffers.length > 0) {
-            setPopupType("OFFERS");
-          } else {
-            setShowPopup(false);
-          }
-        }}>
-          <AnimatedGradientBorder borderRadius={20} borderWidth={2} animationSpeed={3} style={{ width: popupType === "APP_POPUP" ? POPUP_WIDTH : "90%" }}>
-            <Pressable onPress={(e) => e.stopPropagation()} style={[popupStyles.container, { backgroundColor: theme.background }]}>
-              <Pressable style={popupStyles.closeBtn} onPress={() => {
-                if (popupType === "APP_POPUP" && activeOffers.length > 0) {
-                  setPopupType("OFFERS");
-                } else {
-                  setShowPopup(false);
-                }
-              }}>
+      <Modal
+        visible={!isInitialLoading && showPopup && !!popupType}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPopup(false)}
+      >
+        <Pressable
+          style={popupStyles.overlay}
+          onPress={() => {
+            if (popupType === "APP_POPUP" && activeOffers.length > 0) {
+              setPopupType("OFFERS");
+            } else {
+              setShowPopup(false);
+            }
+          }}
+        >
+          <AnimatedGradientBorder
+            borderRadius={20}
+            borderWidth={2}
+            animationSpeed={3}
+            style={{ width: popupType === "APP_POPUP" ? POPUP_WIDTH : "90%" }}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={[
+                popupStyles.container,
+                { backgroundColor: theme.background },
+              ]}
+            >
+              <Pressable
+                style={popupStyles.closeBtn}
+                onPress={() => {
+                  if (popupType === "APP_POPUP" && activeOffers.length > 0) {
+                    setPopupType("OFFERS");
+                  } else {
+                    setShowPopup(false);
+                  }
+                }}
+              >
                 <Ionicons name="close" size={22} color="#fff" />
               </Pressable>
 
@@ -7532,58 +7594,143 @@ console.log(
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
-                    onMomentumScrollEnd={(e) => setPopupIndex(Math.round(e.nativeEvent.contentOffset.x / POPUP_WIDTH))}
+                    onMomentumScrollEnd={(e) =>
+                      setPopupIndex(
+                        Math.round(e.nativeEvent.contentOffset.x / POPUP_WIDTH),
+                      )
+                    }
                     renderItem={({ item }) => (
                       <View style={{ width: POPUP_WIDTH }}>
-                        {item.image_url ? <Image source={{ uri: item.image_url }} style={popupStyles.appImage} /> : <View style={[popupStyles.appImage, { backgroundColor: theme.surfaceVariant }]} />}
+                        {item.image_url ? (
+                          <Image
+                            source={{ uri: item.image_url }}
+                            style={popupStyles.appImage}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              popupStyles.appImage,
+                              { backgroundColor: theme.surfaceVariant },
+                            ]}
+                          />
+                        )}
                         <View style={popupStyles.appContent}>
-                          <Text style={[popupStyles.appTitle, { color: theme.text }]}>{item.title}</Text>
-                          {item.description && <Text style={[popupStyles.appDesc, { color: theme.textLight }]}>{item.description}</Text>}
+                          <Text
+                            style={[
+                              popupStyles.appTitle,
+                              { color: theme.text },
+                            ]}
+                          >
+                            {item.title}
+                          </Text>
+                          {item.description && (
+                            <Text
+                              style={[
+                                popupStyles.appDesc,
+                                { color: theme.textLight },
+                              ]}
+                            >
+                              {item.description}
+                            </Text>
+                          )}
                         </View>
                       </View>
                     )}
                   />
                   {appPopups.length > 1 && (
                     <View style={popupStyles.dotsRow}>
-                      {appPopups.map((_, i) => <View key={i} style={[popupStyles.pDot, i === popupIndex && { backgroundColor: theme.primary, width: 18 }]} />)}
+                      {appPopups.map((_, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            popupStyles.pDot,
+                            i === popupIndex && {
+                              backgroundColor: theme.primary,
+                              width: 18,
+                            },
+                          ]}
+                        />
+                      ))}
                     </View>
                   )}
                 </View>
               ) : (
                 <View style={popupStyles.offersView}>
-                  <View style={[popupStyles.offHeader, { backgroundColor: theme.primary }]}>
-                    <Text style={popupStyles.offHeaderText}>🎉 Special Offers</Text>
+                  <View
+                    style={[
+                      popupStyles.offHeader,
+                      { backgroundColor: theme.primary },
+                    ]}
+                  >
+                    <Text style={popupStyles.offHeaderText}>
+                      🎉 Special Offers
+                    </Text>
                   </View>
                   {activeOffers.map((off, i) => (
                     <Pressable
                       key={i}
-                      style={[popupStyles.offItem, { borderBottomColor: theme.border }]}
+                      style={[
+                        popupStyles.offItem,
+                        { borderBottomColor: theme.border },
+                      ]}
                       onPress={async () => {
                         setShowPopup(false);
-                        const matchingSvc = services.find((s) => s.title === off.title);
+                        const matchingSvc = services.find(
+                          (s) => s.title === off.title,
+                        );
                         if (matchingSvc) {
                           await setClaimedOffer({
                             type: "GENERIC_OFFER",
                             serviceId: matchingSvc.id,
                             serviceTitle: matchingSvc.title,
                             offerPercentage: off.offer_percentage || 40,
-                            offerPrice: (off as any).offer_price || (off as any).fixed_price,
+                            offerPrice:
+                              (off as any).offer_price ||
+                              (off as any).fixed_price,
                             claimedAt: new Date().toISOString(),
                           });
-                          navigation.navigate("ServiceDetail", { service: matchingSvc });
+                          navigation.navigate("ServiceDetail", {
+                            service: matchingSvc,
+                          });
                         }
                       }}
                     >
                       <View style={{ flex: 1 }}>
-                        <Text style={popupStyles.offType}>{off.service_type}</Text>
-                        <Text style={[popupStyles.offTitle, { color: theme.text }]}>{off.title}</Text>
+                        <Text style={popupStyles.offType}>
+                          {off.service_type}
+                        </Text>
+                        <Text
+                          style={[popupStyles.offTitle, { color: theme.text }]}
+                        >
+                          {off.title}
+                        </Text>
                       </View>
-                      <View style={[popupStyles.offBadge, { backgroundColor: theme.primary + "20", borderColor: theme.primary }]}>
-                        <Text style={{ color: theme.primary, fontWeight: '800' }}>{off.offer_percentage}% OFF</Text>
+                      <View
+                        style={[
+                          popupStyles.offBadge,
+                          {
+                            backgroundColor: theme.primary + "20",
+                            borderColor: theme.primary,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{ color: theme.primary, fontWeight: "800" }}
+                        >
+                          {off.offer_percentage}% OFF
+                        </Text>
                       </View>
                     </Pressable>
                   ))}
-                  <Pressable style={[popupStyles.footerBtn, { backgroundColor: theme.primary }]} onPress={() => setShowPopup(false)}><Text style={{ fontWeight: '700' }}>Browse Services</Text></Pressable>
+                  <Pressable
+                    style={[
+                      popupStyles.footerBtn,
+                      { backgroundColor: theme.primary },
+                    ]}
+                    onPress={() => setShowPopup(false)}
+                  >
+                    <Text style={{ fontWeight: "700" }}>Browse Services</Text>
+                  </Pressable>
                 </View>
               )}
             </Pressable>
@@ -7591,57 +7738,128 @@ console.log(
         </Pressable>
       </Modal>
 
-
-
       {/* Welcome Reward Popup */}
-      <Modal visible={showWelcomePopup} transparent animationType="slide" onRequestClose={() => setShowWelcomePopup(false)}>
-        <Pressable style={popupStyles.overlay} onPress={() => setShowWelcomePopup(false)}>
-          <View style={[popupStyles.welcomeCard, { backgroundColor: theme.background }]}>
+      <Modal
+        visible={!isInitialLoading && showWelcomePopup}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowWelcomePopup(false)}
+      >
+        <Pressable
+          style={popupStyles.overlay}
+          onPress={() => setShowWelcomePopup(false)}
+        >
+          <View
+            style={[
+              popupStyles.welcomeCard,
+              { backgroundColor: theme.background },
+            ]}
+          >
             <View style={popupStyles.rewardIconContainer}>
               <Ionicons name="gift" size={50} color={COLORS.saffron} />
             </View>
-            <Text style={[popupStyles.welcomeTitle, { color: theme.text }]}>Welcome Reward! 🎉</Text>
-            <Text style={[popupStyles.welcomeDesc, { color: theme.textLight }]}>
-              Thanks for joining us! Here is your ₹50 reward for using a referral code.
+            <Text style={[popupStyles.welcomeTitle, { color: theme.text }]}>
+              Welcome Reward! 🎉
             </Text>
-            <View style={[popupStyles.couponBox, { backgroundColor: theme.surfaceVariant }]}>
-              <Text style={[popupStyles.couponCodeText, { color: theme.text }]}>{welcomeCoupon}</Text>
-              <TouchableOpacity onPress={() => {
-                Clipboard.setString(welcomeCoupon);
-                showToast("Code copied!", "success");
-              }}>
+            <Text style={[popupStyles.welcomeDesc, { color: theme.textLight }]}>
+              Thanks for joining us! Here is your ₹50 reward for using a
+              referral code.
+            </Text>
+            <View
+              style={[
+                popupStyles.couponBox,
+                { backgroundColor: theme.surfaceVariant },
+              ]}
+            >
+              <Text style={[popupStyles.couponCodeText, { color: theme.text }]}>
+                {welcomeCoupon}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  Clipboard.setString(welcomeCoupon);
+                  showToast("Code copied!", "success");
+                }}
+              >
                 <Ionicons name="copy-outline" size={24} color={theme.primary} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
-              style={[popupStyles.footerBtn, { backgroundColor: theme.primary, width: '100%', margin: 0, marginTop: 24 }]}
+              style={[
+                popupStyles.footerBtn,
+                {
+                  backgroundColor: theme.primary,
+                  width: "100%",
+                  margin: 0,
+                  marginTop: 24,
+                },
+              ]}
               onPress={() => setShowWelcomePopup(false)}
             >
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Great, Thanks!</Text>
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+                Great, Thanks!
+              </Text>
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
 
       {/* 40% OFF Post-Signup Service Claim Popup */}
-      <Modal visible={showSignupOfferPopup} transparent animationType="slide" onRequestClose={() => setShowSignupOfferPopup(false)}>
-        <Pressable style={popupStyles.overlay} onPress={() => setShowSignupOfferPopup(false)}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={[popupStyles.signupCard, { backgroundColor: theme.background }]}>
-
+      <Modal
+        visible={!isInitialLoading && showSignupOfferPopup}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSignupOfferPopup(false)}
+      >
+        <Pressable
+          style={popupStyles.overlay}
+          onPress={() => setShowSignupOfferPopup(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              popupStyles.signupCard,
+              { backgroundColor: theme.background },
+            ]}
+          >
             {/* Header Row */}
             <View style={popupStyles.signupHeaderRow}>
-              <View style={[popupStyles.offerBadgeTag, { backgroundColor: COLORS.saffron + "20", borderColor: COLORS.saffron }]}>
+              <View
+                style={[
+                  popupStyles.offerBadgeTag,
+                  {
+                    backgroundColor: COLORS.saffron + "20",
+                    borderColor: COLORS.saffron,
+                  },
+                ]}
+              >
                 <Ionicons name="sparkles" size={16} color={COLORS.saffron} />
-                <Text style={[popupStyles.offerBadgeText, { color: COLORS.saffron }]}>40% OFF UNLOCKED</Text>
+                <Text
+                  style={[
+                    popupStyles.offerBadgeText,
+                    { color: COLORS.saffron },
+                  ]}
+                >
+                  40% OFF UNLOCKED
+                </Text>
               </View>
-              <Pressable onPress={() => setShowSignupOfferPopup(false)} style={[popupStyles.iconCloseBtn, { backgroundColor: theme.surfaceVariant || "#F0F0F0" }]}>
+              <Pressable
+                onPress={() => setShowSignupOfferPopup(false)}
+                style={[
+                  popupStyles.iconCloseBtn,
+                  { backgroundColor: theme.surfaceVariant || "#F0F0F0" },
+                ]}
+              >
                 <Ionicons name="close" size={20} color={theme.text} />
               </Pressable>
             </View>
 
             {/* Icon Banner */}
             <View style={popupStyles.giftIconContainer}>
-              <Ionicons name="sparkles-sharp" size={42} color={COLORS.saffron} />
+              <Ionicons
+                name="sparkles-sharp"
+                size={42}
+                color={COLORS.saffron}
+              />
             </View>
 
             {/* Title */}
@@ -7650,36 +7868,75 @@ console.log(
             </Text>
 
             {/* Selected Service Highlight Box */}
-            <View style={[popupStyles.serviceHighlightCard, { backgroundColor: theme.surfaceVariant || "#F8FAFC", borderColor: theme.primary + "40" }]}>
-              <Text style={[popupStyles.serviceHighlightLabel, { color: theme.textLight }]}>
+            <View
+              style={[
+                popupStyles.serviceHighlightCard,
+                {
+                  backgroundColor: theme.surfaceVariant || "#F8FAFC",
+                  borderColor: theme.primary + "40",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  popupStyles.serviceHighlightLabel,
+                  { color: theme.textLight },
+                ]}
+              >
                 Selected Service Discount:
               </Text>
-              <Text style={[popupStyles.serviceHighlightTitle, { color: theme.primary }]}>
+              <Text
+                style={[
+                  popupStyles.serviceHighlightTitle,
+                  { color: theme.primary },
+                ]}
+              >
                 {signupOfferInfo?.title || "Selected Service"}
               </Text>
-              <View style={[popupStyles.discountPill, { backgroundColor: theme.primary }]}>
-                <Text style={popupStyles.discountPillText}>40% OFF Discount Active</Text>
+              <View
+                style={[
+                  popupStyles.discountPill,
+                  { backgroundColor: theme.primary },
+                ]}
+              >
+                <Text style={popupStyles.discountPillText}>
+                  40% OFF Discount Active
+                </Text>
               </View>
             </View>
 
             {/* Action Buttons */}
             <TouchableOpacity
-              style={[popupStyles.signupPrimaryBtn, { backgroundColor: theme.primary, marginTop: 10 }]}
+              style={[
+                popupStyles.signupPrimaryBtn,
+                { backgroundColor: theme.primary, marginTop: 10 },
+              ]}
               onPress={handleGoToSignupService}
               activeOpacity={0.85}
             >
-              <Text style={popupStyles.signupPrimaryBtnText}>
-                Claim Offer
-              </Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+              <Text style={popupStyles.signupPrimaryBtnText}>Claim Offer</Text>
+              <Ionicons
+                name="arrow-forward"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginLeft: 6 }}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[popupStyles.signupSecondaryBtn, { borderColor: theme.border || "#E2E8F0" }]}
+              style={[
+                popupStyles.signupSecondaryBtn,
+                { borderColor: theme.border || "#E2E8F0" },
+              ]}
               onPress={() => setShowSignupOfferPopup(false)}
               activeOpacity={0.7}
             >
-              <Text style={[popupStyles.signupSecondaryBtnText, { color: theme.textLight }]}>
+              <Text
+                style={[
+                  popupStyles.signupSecondaryBtnText,
+                  { color: theme.textLight },
+                ]}
+              >
                 Browse Services
               </Text>
             </TouchableOpacity>
@@ -7688,26 +7945,74 @@ console.log(
       </Modal>
 
       {/* Promotional Banner Selected Service Modal */}
-      <Modal visible={showServiceSelectModal} transparent animationType="slide" onRequestClose={() => setShowServiceSelectModal(false)}>
-        <Pressable style={popupStyles.overlay} onPress={() => setShowServiceSelectModal(false)}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={[sheetStyles.sheetContainer, { backgroundColor: theme.background, position: 'absolute', bottom: 0, width: '100%', padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: theme.text }}>Special Offer</Text>
-              <Pressable onPress={() => setShowServiceSelectModal(false)} style={[popupStyles.iconCloseBtn, { backgroundColor: theme.surfaceVariant || "#F0F0F0" }]}>
+      <Modal
+        visible={showServiceSelectModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowServiceSelectModal(false)}
+      >
+        <Pressable
+          style={popupStyles.overlay}
+          onPress={() => setShowServiceSelectModal(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              sheetStyles.sheetContainer,
+              {
+                backgroundColor: theme.background,
+                position: "absolute",
+                bottom: 0,
+                width: "100%",
+                padding: 24,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+              },
+            ]}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Text
+                style={{ fontSize: 20, fontWeight: "800", color: theme.text }}
+              >
+                Special Offer
+              </Text>
+              <Pressable
+                onPress={() => setShowServiceSelectModal(false)}
+                style={[
+                  popupStyles.iconCloseBtn,
+                  { backgroundColor: theme.surfaceVariant || "#F0F0F0" },
+                ]}
+              >
                 <Ionicons name="close" size={20} color={theme.text} />
               </Pressable>
             </View>
 
-            <Text style={{ fontSize: 14, color: theme.textLight, marginBottom: 20 }}>Select a service to use this offer. Only ONE service can be selected.</Text>
+            <Text
+              style={{ fontSize: 14, color: theme.textLight, marginBottom: 20 }}
+            >
+              Select a service to use this offer. Only ONE service can be
+              selected.
+            </Text>
 
             {loadingPromoServices ? (
-              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <View style={{ paddingVertical: 40, alignItems: "center" }}>
                 <ActivityIndicator size="large" color={theme.primary} />
-                <Text style={{ marginTop: 12, color: theme.textLight }}>Loading services...</Text>
+                <Text style={{ marginTop: 12, color: theme.textLight }}>
+                  Loading services...
+                </Text>
               </View>
             ) : promoBannerServices.length === 0 ? (
-              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <Text style={{ color: theme.textLight }}>No services available for this offer.</Text>
+              <View style={{ paddingVertical: 40, alignItems: "center" }}>
+                <Text style={{ color: theme.textLight }}>
+                  No services available for this offer.
+                </Text>
               </View>
             ) : (
               <ScrollView style={{ maxHeight: height * 0.4, marginBottom: 20 }}>
@@ -7717,58 +8022,107 @@ console.log(
                     <TouchableOpacity
                       key={svc.id}
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
                         paddingVertical: 14,
                         paddingHorizontal: 16,
                         borderWidth: 1,
-                        borderColor: isSelected ? theme.primary : (theme.border || "#E2E8F0"),
+                        borderColor: isSelected
+                          ? theme.primary
+                          : theme.border || "#E2E8F0",
                         borderRadius: 12,
                         marginBottom: 10,
-                        backgroundColor: isSelected ? theme.primary + "10" : "transparent"
+                        backgroundColor: isSelected
+                          ? theme.primary + "10"
+                          : "transparent",
                       }}
                       onPress={() => setSelectedPromoServiceId(svc.id)}
                       activeOpacity={0.7}
                     >
-                      <View style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        borderWidth: 2,
-                        borderColor: isSelected ? theme.primary : "#CBD5E1",
-                        marginRight: 12,
-                        justifyContent: 'center',
-                        alignItems: 'center'
-                      }}>
-                        {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary }} />}
+                      <View
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          borderWidth: 2,
+                          borderColor: isSelected ? theme.primary : "#CBD5E1",
+                          marginRight: 12,
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        {isSelected && (
+                          <View
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 5,
+                              backgroundColor: theme.primary,
+                            }}
+                          />
+                        )}
                       </View>
-                      <Text style={{ fontSize: 15, fontWeight: isSelected ? '700' : '500', color: theme.text }}>{svc.title}</Text>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: isSelected ? "700" : "500",
+                          color: theme.text,
+                        }}
+                      >
+                        {svc.title}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </ScrollView>
             )}
 
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 'auto' }}>
+            <View style={{ flexDirection: "row", gap: 12, marginTop: "auto" }}>
               <TouchableOpacity
-                style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: theme.border || "#E2E8F0", alignItems: 'center', justifyContent: 'center' }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: theme.border || "#E2E8F0",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
                 onPress={() => setShowServiceSelectModal(false)}
               >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.textLight }}>Cancel</Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "600",
+                    color: theme.textLight,
+                  }}
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
                   flex: 1,
                   paddingVertical: 14,
                   borderRadius: 14,
-                  backgroundColor: selectedPromoServiceId ? theme.primary : "#E2E8F0",
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  backgroundColor: selectedPromoServiceId
+                    ? theme.primary
+                    : "#E2E8F0",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
                 onPress={handleSelectedServiceClaim}
                 disabled={!selectedPromoServiceId || loadingPromoServices}
               >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: selectedPromoServiceId ? "#FFFFFF" : "#94A3B8" }}>Claim Offer</Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "700",
+                    color: selectedPromoServiceId ? "#FFFFFF" : "#94A3B8",
+                  }}
+                >
+                  Claim Offer
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -7776,35 +8130,110 @@ console.log(
       </Modal>
 
       {/* Login Required Popup for Banners */}
-      <Modal visible={showLoginPrompt} transparent animationType="fade" onRequestClose={() => setShowLoginPrompt(false)}>
-        <Pressable style={popupStyles.overlay} onPress={() => setShowLoginPrompt(false)}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={[popupStyles.container, { backgroundColor: theme.background, width: POPUP_WIDTH, padding: 24 }]}>
+      <Modal
+        visible={showLoginPrompt}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLoginPrompt(false)}
+      >
+        <Pressable
+          style={popupStyles.overlay}
+          onPress={() => setShowLoginPrompt(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              popupStyles.container,
+              {
+                backgroundColor: theme.background,
+                width: POPUP_WIDTH,
+                padding: 24,
+              },
+            ]}
+          >
             <View style={{ alignItems: "center" }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(244, 196, 48, 0.2)", justifyContent: "center", alignItems: "center", marginBottom: 16 }}>
-                <Ionicons name="person-outline" size={32} color={COLORS.saffron} />
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: "rgba(244, 196, 48, 0.2)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={32}
+                  color={COLORS.saffron}
+                />
               </View>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: theme.text, marginBottom: 8, textAlign: "center" }}>
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: "800",
+                  color: theme.text,
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
+              >
                 Login Required
               </Text>
-              <Text style={{ fontSize: 14, color: theme.textLight, textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
-                Please login or create an account to continue and claim this promotional offer.
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: theme.textLight,
+                  textAlign: "center",
+                  marginBottom: 24,
+                  lineHeight: 20,
+                }}
+              >
+                Please login or create an account to continue and claim this
+                promotional offer.
               </Text>
 
               <TouchableOpacity
-                style={{ width: "100%", backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 12, alignItems: "center", marginBottom: 12 }}
+                style={{
+                  width: "100%",
+                  backgroundColor: theme.primary,
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
                 onPress={() => {
                   setShowLoginPrompt(false);
                   navigation.navigate("Login");
                 }}
               >
-                <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}>Login / Sign Up</Text>
+                <Text
+                  style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}
+                >
+                  Login / Sign Up
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ width: "100%", paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.border, alignItems: "center" }}
+                style={{
+                  width: "100%",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  alignItems: "center",
+                }}
                 onPress={() => setShowLoginPrompt(false)}
               >
-                <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textLight }}>Close</Text>
+                <Text
+                  style={{
+                    fontSize: 15,
+                    fontWeight: "600",
+                    color: theme.textLight,
+                  }}
+                >
+                  Close
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -7815,7 +8244,10 @@ console.log(
 
       {showGoUp && (
         <TouchableOpacity
-          style={[goUpStyles.goUpBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+          style={[
+            goUpStyles.goUpBtn,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
           onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
           activeOpacity={0.85}
         >
@@ -7852,15 +8284,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  dots: { position: "absolute", bottom: 12, alignSelf: "center", flexDirection: "row", gap: 6 },
+  dots: {
+    position: "absolute",
+    bottom: 12,
+    alignSelf: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
   dot: { height: 8, borderRadius: 4 },
-  titleRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  titleBar: { width: 4, height: 22, backgroundColor: COLORS.saffron, borderRadius: 2 },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  titleBar: {
+    width: 4,
+    height: 22,
+    backgroundColor: COLORS.saffron,
+    borderRadius: 2,
+  },
   titleText: { fontSize: 20, fontWeight: "800" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginTop: 24, marginBottom: 16 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 16,
+    marginTop: 24,
+    marginBottom: 16,
+  },
   gridContainer: { paddingHorizontal: 12 },
   grid: { flexDirection: "row", flexWrap: "wrap" },
-  gridItem: { width: "33.33%", alignItems: "center", marginBottom: 20, paddingHorizontal: 4 },
+  gridItem: {
+    width: "33.33%",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
   gridItemActive: { opacity: 0.7 },
   gridIconContainer: {
     width: "100%",
@@ -7873,27 +8333,60 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Ensures image stays within rounded corners
   },
   gridIcon: { width: "85%", height: "85%" },
-  gridLabel: { fontSize: 13, fontWeight: "600", textAlign: "center", lineHeight: 18 },
+  gridLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 18,
+  },
 });
 
 const popupStyles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: { borderRadius: 20, overflow: "hidden" },
-  closeBtn: { position: "absolute", top: 12, right: 12, zIndex: 20, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 20, padding: 4 },
+  closeBtn: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 20,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 20,
+    padding: 4,
+  },
   appImage: { width: "100%", height: 200 },
   appContent: { padding: 20, alignItems: "center" },
   appTitle: { fontSize: 18, fontWeight: "800", textAlign: "center" },
   appDesc: { fontSize: 13, textAlign: "center", marginTop: 6, lineHeight: 18 },
-  dotsRow: { flexDirection: "row", justifyContent: "center", paddingBottom: 16, gap: 6 },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingBottom: 16,
+    gap: 6,
+  },
   pDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ccc" },
   offersView: { width: "100%" },
   offHeader: { padding: 16, alignItems: "center" },
   offHeaderText: { fontSize: 18, fontWeight: "800", color: "#000" },
-  offItem: { flexDirection: "row", padding: 16, borderBottomWidth: 1, alignItems: "center" },
+  offItem: {
+    flexDirection: "row",
+    padding: 16,
+    borderBottomWidth: 1,
+    alignItems: "center",
+  },
   offType: { fontSize: 10, color: "#999", fontWeight: "700" },
   offTitle: { fontSize: 14, fontWeight: "700", marginTop: 2 },
   offBadge: { padding: 6, borderRadius: 8, borderWidth: 1 },
-  footerBtn: { margin: 16, paddingVertical: 14, borderRadius: 12, alignItems: "center" },
+  footerBtn: {
+    margin: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
   welcomeCard: {
     width: "85%",
     padding: 24,
@@ -8221,29 +8714,5 @@ const promoBannerStyles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     lineHeight: 9,
-  }
+  },
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

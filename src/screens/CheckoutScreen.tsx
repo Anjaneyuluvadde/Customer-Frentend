@@ -1,5 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { RouteProp, useFocusEffect, useNavigation } from "@react-navigation/native";
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
 import * as Location from "expo-location";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -16,7 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   Vibration,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import LocationService from "../services/LocationService";
@@ -30,13 +34,10 @@ import TermsModal from "../components/TermsModal";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
-import { processPayment } from "../lib/paymentService";
-import { supabase } from "../lib/supabase";
 import {
   checkPincodeServiceable as apiCheckPincodeServiceable,
   clearCustomerCart,
   createCustomerBooking,
-  getCustomerConsumedPromotionalBanners,
   getCustomerMyBookings,
   getCustomerPolicies,
   getCustomerProfile,
@@ -46,7 +47,12 @@ import {
   updateCustomerProfile,
   validateCustomerCoupon,
 } from "../lib/customerApi";
-import { RootStackParamList, SelectedService } from "../navigation/AppNavigator";
+import { processPayment } from "../lib/paymentService";
+import { supabase } from "../lib/supabase";
+import {
+  RootStackParamList,
+  SelectedService,
+} from "../navigation/AppNavigator";
 import { COLORS } from "../theme/colors";
 import { clearClaimedOffer, getClaimedOffer } from "../utils/priceUtils";
 
@@ -111,7 +117,9 @@ export default function CheckoutScreen({ route }: Props) {
   const { theme, isDark } = useTheme();
   const bottomNavPadding = useBottomNavPadding();
   const { services: initialServices, bookingDateText } = route.params;
-  const [checkoutServices, setCheckoutServices] = useState<SelectedService[]>(initialServices || []);
+  const [checkoutServices, setCheckoutServices] = useState<SelectedService[]>(
+    initialServices || [],
+  );
 
   useEffect(() => {
     // ❌ Removed applyClaimedOfferToCheckout that modifies service prices directly.
@@ -121,6 +129,15 @@ export default function CheckoutScreen({ route }: Props) {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingPolicies, setLoadingPolicies] = useState(true);
+  const [loadingPartialConfig, setLoadingPartialConfig] = useState(true);
+  const [loadingClaimedOffer, setLoadingClaimedOffer] = useState(true);
+
+  const isInitialLoading =
+    loadingProfile ||
+    loadingPolicies ||
+    loadingPartialConfig ||
+    loadingClaimedOffer;
   const [invoiceEmail, setInvoiceEmail] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -137,52 +154,84 @@ export default function CheckoutScreen({ route }: Props) {
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
     message: string;
-    type: 'error' | 'info' | 'warning';
-  }>({ title: '', message: '', type: 'error' });
+    type: "error" | "info" | "warning";
+  }>({ title: "", message: "", type: "error" });
 
   // Address Form State
-  const [serviceAreaContext, setServiceAreaContext] = useState<{ name: string, pincode: string } | null>(null);
-  const [manualAddress, setManualAddress] = useState(route.params?.manualAddress || "");
+  const [serviceAreaContext, setServiceAreaContext] = useState<{
+    name: string;
+    pincode: string;
+  } | null>(null);
+  const [manualAddress, setManualAddress] = useState(
+    route.params?.manualAddress || "",
+  );
   const [pincode, setPincode] = useState(route.params?.pincode || "");
 
   // Location coordinates (not displayed, only stored in booking)
-  const [bookingLatitude, setBookingLatitude] = useState<number | null>(route.params?.bookingLatitude || null);
-  const [bookingLongitude, setBookingLongitude] = useState<number | null>(route.params?.bookingLongitude || null);
+  const [bookingLatitude, setBookingLatitude] = useState<number | null>(
+    route.params?.bookingLatitude || null,
+  );
+  const [bookingLongitude, setBookingLongitude] = useState<number | null>(
+    route.params?.bookingLongitude || null,
+  );
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [isAddressSummaryMode, setIsAddressSummaryMode] = useState(true);
-  const [hasUsedLocationFetch, setHasUsedLocationFetch] = useState(!!route.params?.manualAddress);
+  const [hasUsedLocationFetch, setHasUsedLocationFetch] = useState(
+    !!route.params?.manualAddress,
+  );
 
   // ✅ Pincode verification state
-  const [isPincodeServiceable, setIsPincodeServiceable] = useState<boolean>(false);
+  const [isPincodeServiceable, setIsPincodeServiceable] =
+    useState<boolean>(false);
   const [checkingPincode, setCheckingPincode] = useState<boolean>(false);
 
   // ✅ Dynamic Policies State
   const [policies, setPolicies] = useState<Policies | null>(null);
 
   // ✅ Coupon state
-  const [coupon, setCoupon] = useState<{ id: string; coupon_code: string; discount_percentage?: number; discount_amount?: number; source?: "MANUAL_COUPON" | "PROMOTIONAL_BANNER" | "SERVICE_DISCOUNT" | "NEW_USER" | "GENERIC_OFFER" | "MANUAL_ENTRY"; serviceId?: string } | null>(null);
+  const [coupon, setCoupon] = useState<{
+    id: string;
+    coupon_code: string;
+    discount_percentage?: number;
+    discount_amount?: number;
+    source?:
+      | "MANUAL_COUPON"
+      | "PROMOTIONAL_BANNER"
+      | "SERVICE_DISCOUNT"
+      | "NEW_USER"
+      | "GENERIC_OFFER"
+      | "MANUAL_ENTRY";
+    serviceId?: string;
+  } | null>(null);
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
 
   /* ================= TOTALS (PRE-DECLARED FOR EFFECT) ================= */
 
   const totalPrice = useMemo(
-    () => checkoutServices.reduce((sum, s) => {
-      const qty = s.quantity || 1;
-      return sum + (parsePrice(s.price) * qty);
-    }, 0),
-    [checkoutServices]
+    () =>
+      checkoutServices.reduce((sum, s) => {
+        const qty = s.quantity || 1;
+        return sum + parsePrice(s.price) * qty;
+      }, 0),
+    [checkoutServices],
   );
 
   const totalOriginalPrice = useMemo(
-    () => checkoutServices.reduce((sum, s) => {
-      const qty = s.quantity || 1;
-      if (s.original_price && Number(String(s.original_price).replace(/[^\d.]/g, '')) > 0) {
-        return sum + (Number(String(s.original_price).replace(/[^\d.]/g, '')) * qty);
-      }
-      return sum + (parsePrice(s.price) * qty);
-    }, 0),
-    [checkoutServices]
+    () =>
+      checkoutServices.reduce((sum, s) => {
+        const qty = s.quantity || 1;
+        if (
+          s.original_price &&
+          Number(String(s.original_price).replace(/[^\d.]/g, "")) > 0
+        ) {
+          return (
+            sum + Number(String(s.original_price).replace(/[^\d.]/g, "")) * qty
+          );
+        }
+        return sum + parsePrice(s.price) * qty;
+      }, 0),
+    [checkoutServices],
   );
 
   const calculatedCouponDiscountAmount = useMemo(() => {
@@ -194,28 +243,47 @@ export default function CheckoutScreen({ route }: Props) {
     if (coupon.source === "PROMOTIONAL_BANNER") {
       if (!coupon.serviceId) return 0;
 
-      const svc = checkoutServices.find(s => s.id === coupon.serviceId);
+      const svc = checkoutServices.find((s) => s.id === coupon.serviceId);
       if (svc) {
         const qty = svc.quantity || 1;
-        const priceToDiscount = (svc.original_price && Number(String(svc.original_price).replace(/[^\d.]/g, '')) > 0)
-          ? Number(String(svc.original_price).replace(/[^\d.]/g, ''))
-          : parsePrice(svc.price);
-        return Number(((priceToDiscount * qty * couponDiscount) / 100).toFixed(2));
+        const priceToDiscount =
+          svc.original_price &&
+          Number(String(svc.original_price).replace(/[^\d.]/g, "")) > 0
+            ? Number(String(svc.original_price).replace(/[^\d.]/g, ""))
+            : parsePrice(svc.price);
+        return Number(
+          ((priceToDiscount * qty * couponDiscount) / 100).toFixed(2),
+        );
       }
       return 0; // If the service isn't in the cart, no discount
     }
 
-    const baseForDiscount = totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
+    const baseForDiscount =
+      totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
     return Number(((baseForDiscount * couponDiscount) / 100).toFixed(2));
-  }, [couponApplied, coupon, totalOriginalPrice, totalPrice, couponDiscount, checkoutServices]);
+  }, [
+    couponApplied,
+    coupon,
+    totalOriginalPrice,
+    totalPrice,
+    couponDiscount,
+    checkoutServices,
+  ]);
 
   const effectiveSubtotal = useMemo(() => {
     if (couponApplied && coupon) {
-      const baseForDiscount = totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
+      const baseForDiscount =
+        totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
       return Math.max(0, baseForDiscount - calculatedCouponDiscountAmount);
     }
     return totalPrice;
-  }, [couponApplied, coupon, totalOriginalPrice, totalPrice, calculatedCouponDiscountAmount]);
+  }, [
+    couponApplied,
+    coupon,
+    totalOriginalPrice,
+    totalPrice,
+    calculatedCouponDiscountAmount,
+  ]);
 
   const totalEffectiveSavings = useMemo(() => {
     const baseOrig = totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
@@ -239,8 +307,10 @@ export default function CheckoutScreen({ route }: Props) {
             if (claimed.serviceId && s.id === claimed.serviceId) return true;
             if (
               claimed.serviceTitle &&
-              (s.title?.toLowerCase().trim() === claimed.serviceTitle?.toLowerCase().trim() ||
-                s.service_type?.toLowerCase().trim() === claimed.serviceTitle?.toLowerCase().trim())
+              (s.title?.toLowerCase().trim() ===
+                claimed.serviceTitle?.toLowerCase().trim() ||
+                s.service_type?.toLowerCase().trim() ===
+                  claimed.serviceTitle?.toLowerCase().trim())
             ) {
               return true;
             }
@@ -248,7 +318,9 @@ export default function CheckoutScreen({ route }: Props) {
           });
 
           if (!matchesService) {
-            console.log("ℹ️ Offer is restricted to a different service. Discount not applied.");
+            console.log(
+              "ℹ️ Offer is restricted to a different service. Discount not applied.",
+            );
           } else {
             isValidClaim = true;
           }
@@ -260,11 +332,19 @@ export default function CheckoutScreen({ route }: Props) {
           const pct = claimed.offerPercentage || 40;
 
           if (claimed.type === "PROMOTIONAL_BANNER") {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
 
             // Check auth mismatch
-            if (claimed.userId && session?.user?.id && claimed.userId !== session.user.id) {
-              console.log("[COUPON STEP 7] PROMOTIONAL_BANNER userId mismatch. Blocking.");
+            if (
+              claimed.userId &&
+              session?.user?.id &&
+              claimed.userId !== session.user.id
+            ) {
+              console.log(
+                "[COUPON STEP 7] PROMOTIONAL_BANNER userId mismatch. Blocking.",
+              );
               await clearClaimedOffer();
               return;
             }
@@ -274,9 +354,12 @@ export default function CheckoutScreen({ route }: Props) {
               let error: any = null;
               try {
                 const myBookings = await getCustomerMyBookings();
-                promoBookings = (myBookings || []).filter((b: any) =>
-                  b.promotional_banner_id === claimed.bannerId &&
-                  String(b.work_status || "").trim().toUpperCase() === "COMPLETED"
+                promoBookings = (myBookings || []).filter(
+                  (b: any) =>
+                    b.promotional_banner_id === claimed.bannerId &&
+                    String(b.work_status || "")
+                      .trim()
+                      .toUpperCase() === "COMPLETED",
                 );
               } catch (err: any) {
                 error = err;
@@ -294,7 +377,9 @@ export default function CheckoutScreen({ route }: Props) {
                     }
                   }
                   if (Array.isArray(bServices)) {
-                    if (bServices.some((s: any) => s.id === claimed.serviceId)) {
+                    if (
+                      bServices.some((s: any) => s.id === claimed.serviceId)
+                    ) {
                       isAlreadyUsed = true;
                       break;
                     }
@@ -304,19 +389,27 @@ export default function CheckoutScreen({ route }: Props) {
 
               const count = isAlreadyUsed ? 1 : 0;
 
-              console.log("[COUPON STEP 7] PROMOTIONAL_BANNER redemption check:", {
-                bannerId: claimed.bannerId,
-                count,
-                error
-              });
+              console.log(
+                "[COUPON STEP 7] PROMOTIONAL_BANNER redemption check:",
+                {
+                  bannerId: claimed.bannerId,
+                  count,
+                  error,
+                },
+              );
 
               if (error) {
-                console.error("[COUPON STEP 7] Error checking promotional banner redemption:", error);
+                console.error(
+                  "[COUPON STEP 7] Error checking promotional banner redemption:",
+                  error,
+                );
                 return;
               }
 
               if (count && count > 0) {
-                console.log("[COUPON STEP 7] PROMOTIONAL_BANNER already redeemed. Blocking reuse.");
+                console.log(
+                  "[COUPON STEP 7] PROMOTIONAL_BANNER already redeemed. Blocking reuse.",
+                );
                 await clearClaimedOffer();
                 setCoupon(null);
                 setCouponApplied(false);
@@ -325,7 +418,9 @@ export default function CheckoutScreen({ route }: Props) {
               }
             }
 
-            console.log("[COUPON STEP 8] Eligibility: PROMOTIONAL_BANNER. Applying exact banner offer.");
+            console.log(
+              "[COUPON STEP 8] Eligibility: PROMOTIONAL_BANNER. Applying exact banner offer.",
+            );
 
             if (!isMounted) return;
             const promoCode = claimed.bannerId
@@ -342,11 +437,16 @@ export default function CheckoutScreen({ route }: Props) {
             });
             setCouponDiscount(pct);
             setCouponApplied(true);
-            setCouponStatus({ type: 'success', message: `Promotional banner applied! ${pct}% off` });
+            setCouponStatus({
+              type: "success",
+              message: `Promotional banner applied! ${pct}% off`,
+            });
             console.log(`[COUPON STEP 8] Final coupon: ${promoCode}`);
             return;
           } else if (claimed.type === "GENERIC_OFFER") {
-            console.log("[COUPON STEP 2] Eligibility: GENERIC_OFFER. Applying offer.");
+            console.log(
+              "[COUPON STEP 2] Eligibility: GENERIC_OFFER. Applying offer.",
+            );
             if (!isMounted) return;
             const finalCode = `PROMO_${pct}OFF`;
             setCoupon({
@@ -358,39 +458,71 @@ export default function CheckoutScreen({ route }: Props) {
             });
             setCouponDiscount(pct);
             setCouponApplied(true);
-            setCouponStatus({ type: 'success', message: `Coupon applied! ${pct}% off for ${claimed.serviceTitle || "selected service"}` });
+            setCouponStatus({
+              type: "success",
+              message: `Coupon applied! ${pct}% off for ${claimed.serviceTitle || "selected service"}`,
+            });
             console.log("[COUPON STEP 2] Coupon applied: true");
             console.log(`[COUPON STEP 2] Final coupon code: ${finalCode}`);
             return;
           } else {
-            console.log("[COUPON STEP 2] Eligibility: LEGACY CLAIM (type undefined). Ignoring.");
+            console.log(
+              "[COUPON STEP 2] Eligibility: LEGACY CLAIM (type undefined). Ignoring.",
+            );
           }
         }
       }
 
       // If no claimed offer, check if any service in checkout has discount_percent > 0 (e.g. 40% OFF)
-      const serviceWithDiscount = checkoutServices.find(s => s.discount_percent && Number(s.discount_percent) > 0);
-      if (serviceWithDiscount && Number(serviceWithDiscount.discount_percent) > 0) {
+      const serviceWithDiscount = checkoutServices.find(
+        (s) => s.discount_percent && Number(s.discount_percent) > 0,
+      );
+      if (
+        serviceWithDiscount &&
+        Number(serviceWithDiscount.discount_percent) > 0
+      ) {
         const pct = Number(serviceWithDiscount.discount_percent);
         if (!isMounted) return;
         setCoupon({
           id: "service_discount_offer",
-          coupon_code: serviceWithDiscount.discount_label ? String(serviceWithDiscount.discount_label).toUpperCase().replace(/\s+/g, '') : `OFFER_${pct}%`,
+          coupon_code: serviceWithDiscount.discount_label
+            ? String(serviceWithDiscount.discount_label)
+                .toUpperCase()
+                .replace(/\s+/g, "")
+            : `OFFER_${pct}%`,
           discount_percentage: pct,
           discount_amount: 0,
           source: "SERVICE_DISCOUNT",
         });
         setCouponDiscount(pct);
         setCouponApplied(true);
-        setCouponStatus({ type: 'success', message: `Special ${pct}% offer applied!` });
+        setCouponStatus({
+          type: "success",
+          message: `Special ${pct}% offer applied!`,
+        });
 
         // 🧹 Clear stale banner claim since we're using a service discount instead
         await clearClaimedOffer();
       }
     };
 
-    applyClaimedOfferAsCoupon();
-    return () => { isMounted = false; };
+    const loadInitialClaimedOffer = async () => {
+      try {
+        await applyClaimedOfferAsCoupon();
+      } catch (err) {
+        console.error("Error loading claimed offer:", err);
+      } finally {
+        if (isMounted) {
+          setLoadingClaimedOffer(false);
+        }
+      }
+    };
+
+    loadInitialClaimedOffer();
+
+    return () => {
+      isMounted = false;
+    };
   }, [checkoutServices]);
 
   // ✅ Wallet state
@@ -400,7 +532,10 @@ export default function CheckoutScreen({ route }: Props) {
   // ✅ Manual Coupon State
   const [manualCouponCode, setManualCouponCode] = useState("");
   const [isVerifyingCoupon, setIsVerifyingCoupon] = useState(false);
-  const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | '', message: string }>({ type: '', message: '' });
+  const [couponStatus, setCouponStatus] = useState<{
+    type: "success" | "error" | "";
+    message: string;
+  }>({ type: "", message: "" });
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -442,22 +577,25 @@ export default function CheckoutScreen({ route }: Props) {
       setAlertConfig({
         title: "Location Missing",
         message: "Please fetch or enter your address first.",
-        type: "warning"
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
     }
 
-    const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
+    const scheme = Platform.select({
+      ios: "maps:0,0?q=",
+      android: "geo:0,0?q=",
+    });
     const latLng = `${currentLat},${currentLng}`;
-    const label = 'Service Location';
+    const label = "Service Location";
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`
+      android: `${scheme}${latLng}(${label})`,
     });
 
     if (url) {
-      Linking.openURL(url).catch(err => {
+      Linking.openURL(url).catch((err) => {
         console.error("Failed to open map:", err);
       });
     }
@@ -483,12 +621,14 @@ export default function CheckoutScreen({ route }: Props) {
       try {
         const hubCheck = await apiCheckPincodeServiceable(cleanedPin);
         if (hubCheck && hubCheck.serviceable && hubCheck.hub) {
-          data = [{
-            id: hubCheck.hub.id || hubCheck.hub.hub_id,
-            hub_name: hubCheck.hub.hub_name || hubCheck.hub.name,
-            pincode: cleanedPin,
-            is_active: true,
-          }];
+          data = [
+            {
+              id: hubCheck.hub.id || hubCheck.hub.hub_id,
+              hub_name: hubCheck.hub.hub_name || hubCheck.hub.name,
+              pincode: cleanedPin,
+              is_active: true,
+            },
+          ];
         } else {
           data = [];
         }
@@ -505,10 +645,15 @@ export default function CheckoutScreen({ route }: Props) {
       const available = Array.isArray(data) && data.length > 0;
       setIsPincodeServiceable(available);
 
-      console.log(`[SERVICEABILITY STEP 2] Matching rows: ${data ? data.length : 0}`);
-      console.log(`[SERVICEABILITY STEP 2] Matching hub: ${available ? data[0].hub_name : 'null'}`);
-      console.log(`[SERVICEABILITY STEP 2] Final: ${available ? 'AVAILABLE' : 'NOT_AVAILABLE'}`);
-
+      console.log(
+        `[SERVICEABILITY STEP 2] Matching rows: ${data ? data.length : 0}`,
+      );
+      console.log(
+        `[SERVICEABILITY STEP 2] Matching hub: ${available ? data[0].hub_name : "null"}`,
+      );
+      console.log(
+        `[SERVICEABILITY STEP 2] Final: ${available ? "AVAILABLE" : "NOT_AVAILABLE"}`,
+      );
     } catch (err: any) {
       console.log(`[SERVICEABILITY STEP 2] Final: NOT_AVAILABLE`);
       setIsPincodeServiceable(false);
@@ -538,7 +683,7 @@ export default function CheckoutScreen({ route }: Props) {
     let couponError: any = null;
     try {
       const myCoupons = await getMyCoupons();
-      couponData = (myCoupons && myCoupons.length > 0) ? myCoupons[0] : null;
+      couponData = myCoupons && myCoupons.length > 0 ? myCoupons[0] : null;
     } catch (err: any) {
       couponError = err;
     }
@@ -549,26 +694,39 @@ export default function CheckoutScreen({ route }: Props) {
     }
 
     setCoupon((prev) => {
-      console.log("[COUPON STEP 5] Existing coupon before fetchUserCoupon:", prev ? prev.coupon_code : "none");
+      console.log(
+        "[COUPON STEP 5] Existing coupon before fetchUserCoupon:",
+        prev ? prev.coupon_code : "none",
+      );
 
       if (prev) {
         if (couponData && !couponData.is_used) {
-          console.log("[COUPON STEP 5] Manual coupon found:", couponData.coupon_code);
+          console.log(
+            "[COUPON STEP 5] Manual coupon found:",
+            couponData.coupon_code,
+          );
         } else {
           console.log("[COUPON STEP 5] Manual coupon not found");
         }
-        console.log("[COUPON STEP 5] Preserving existing claimed offer coupon:", prev.coupon_code);
+        console.log(
+          "[COUPON STEP 5] Preserving existing claimed offer coupon:",
+          prev.coupon_code,
+        );
         console.log("[COUPON STEP 5] Final coupon state:", prev.coupon_code);
         return prev;
       }
 
       if (couponData && !couponData.is_used) {
         console.log("✅ Valid unused coupon found:", couponData.coupon_code);
-        console.log("[COUPON STEP 5] Final coupon state:", couponData.coupon_code);
+        console.log(
+          "[COUPON STEP 5] Final coupon state:",
+          couponData.coupon_code,
+        );
 
         // Fix for manual coupons: ensure they actually apply the discount
         setTimeout(() => {
-          const discountPct = couponData.discount_percentage || couponData.discount_p || 0;
+          const discountPct =
+            couponData.discount_percentage || couponData.discount_p || 0;
           setCouponDiscount(discountPct);
           setCouponApplied(true);
         }, 0);
@@ -576,9 +734,10 @@ export default function CheckoutScreen({ route }: Props) {
         return {
           id: couponData.id,
           coupon_code: couponData.coupon_code,
-          discount_percentage: couponData.discount_percentage || couponData.discount_p || 0,
+          discount_percentage:
+            couponData.discount_percentage || couponData.discount_p || 0,
           discount_amount: couponData.discount_amount || 0,
-          source: "MANUAL_COUPON"
+          source: "MANUAL_COUPON",
         };
       } else {
         console.log("[COUPON STEP 5] Manual coupon not found");
@@ -616,7 +775,15 @@ export default function CheckoutScreen({ route }: Props) {
   }, []);
 
   useEffect(() => {
-    fetchPolicies();
+    const loadInitialPolicies = async () => {
+      try {
+        await fetchPolicies();
+      } finally {
+        setLoadingPolicies(false);
+      }
+    };
+
+    loadInitialPolicies();
   }, [fetchPolicies]);
 
   /* ================= LOAD PROFILE ================= */
@@ -633,7 +800,7 @@ export default function CheckoutScreen({ route }: Props) {
 
         const cleanedProfile = {
           ...profileData,
-          phone: formatDisplayPhone(profileData.phone)
+          phone: formatDisplayPhone(profileData.phone),
         };
         setProfile(cleanedProfile);
 
@@ -641,10 +808,14 @@ export default function CheckoutScreen({ route }: Props) {
           setInvoiceEmail(profileData.email);
         }
 
-        const selectedServiceArea = await LocationService.getSelectedServiceArea();
+        const selectedServiceArea =
+          await LocationService.getSelectedServiceArea();
 
         if (selectedServiceArea && selectedServiceArea.isServiceable) {
-          setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
+          setServiceAreaContext({
+            name: selectedServiceArea.name,
+            pincode: selectedServiceArea.pincode,
+          });
         } else {
           setServiceAreaContext(null);
         }
@@ -663,12 +834,11 @@ export default function CheckoutScreen({ route }: Props) {
 
         const bal = resp?.wallet_balance ?? profileData.wallet_balance ?? 0;
         setWalletBalance(bal);
-
       } else {
         setAlertConfig({
-          title: 'Profile Not Found',
-          message: 'Please complete your profile before booking',
-          type: 'warning'
+          title: "Profile Not Found",
+          message: "Please complete your profile before booking",
+          type: "warning",
         });
         setShowAlertModal(true);
         navigation.navigate("MainTabs", { screen: "ProfileTab" });
@@ -690,7 +860,7 @@ export default function CheckoutScreen({ route }: Props) {
       loadProfile(),
       fetchPolicies(),
       profile?.phone ? fetchUserCoupon(profile.phone) : Promise.resolve(),
-      pincode ? checkPincodeServiceable(pincode) : Promise.resolve()
+      pincode ? checkPincodeServiceable(pincode) : Promise.resolve(),
     ]);
     setRefreshing(false);
   };
@@ -702,8 +872,8 @@ export default function CheckoutScreen({ route }: Props) {
       Location.requestForegroundPermissionsAsync().catch((err) => {
         console.log("Location permission pre-request failed:", err);
       });
-      return () => { };
-    }, [])
+      return () => {};
+    }, []),
   );
 
   /* ================= LOCATION ================= */
@@ -714,23 +884,27 @@ export default function CheckoutScreen({ route }: Props) {
     setFetchingLocation(true);
     try {
       // Force GPS fetch (true) because user explicitly clicked the GPS button
-      const result = await LocationService.fetchCurrentLocation(Location.Accuracy.High, true);
+      const result = await LocationService.fetchCurrentLocation(
+        Location.Accuracy.High,
+        true,
+      );
 
-      if (result.status === 'permission_denied') {
+      if (result.status === "permission_denied") {
         setAlertConfig({
-          title: 'Permission Denied',
-          message: 'Location access is required to use this feature',
-          type: 'warning'
+          title: "Permission Denied",
+          message: "Location access is required to use this feature",
+          type: "warning",
         });
         setShowAlertModal(true);
         return;
       }
 
-      if (result.status === 'error') {
+      if (result.status === "error") {
         setAlertConfig({
-          title: 'Location Error',
-          message: 'Could not fetch your location. Please try again or enter manually.',
-          type: 'error'
+          title: "Location Error",
+          message:
+            "Could not fetch your location. Please try again or enter manually.",
+          type: "error",
         });
         setShowAlertModal(true);
         return;
@@ -744,7 +918,10 @@ export default function CheckoutScreen({ route }: Props) {
         const fullAddr: string = addr.formattedAddress || "";
 
         if (fullAddr) {
-          const parts = fullAddr.split(",").map((p: string) => p.trim()).filter((p: string) => p);
+          const parts = fullAddr
+            .split(",")
+            .map((p: string) => p.trim())
+            .filter((p: string) => p);
           let pinIdx = -1;
           for (let i = parts.length - 1; i >= 0; i--) {
             const pinMatch = parts[i].match(/\b(\d{6})\b/);
@@ -759,7 +936,13 @@ export default function CheckoutScreen({ route }: Props) {
           setIsAddressSummaryMode(true);
           setHasUsedLocationFetch(true);
         } else {
-          setManualAddress(addr.street || addr.district || addr.subregion || result.locality || "");
+          setManualAddress(
+            addr.street ||
+              addr.district ||
+              addr.subregion ||
+              result.locality ||
+              "",
+          );
           if (addr.postalCode) setPincode(addr.postalCode);
           setIsAddressSummaryMode(false);
         }
@@ -776,41 +959,54 @@ export default function CheckoutScreen({ route }: Props) {
     const discountPct = coupon.discount_percentage || 0;
     setCouponDiscount(discountPct);
     setCouponApplied(true);
-    const msg = coupon.discount_amount && coupon.discount_amount > 0
-      ? `Coupon applied! ₹${coupon.discount_amount} off`
-      : `Coupon applied! ${discountPct}% off`;
-    setCouponStatus({ type: 'success', message: msg });
+    const msg =
+      coupon.discount_amount && coupon.discount_amount > 0
+        ? `Coupon applied! ₹${coupon.discount_amount} off`
+        : `Coupon applied! ${discountPct}% off`;
+    setCouponStatus({ type: "success", message: msg });
   };
 
   const handleApplyManualCoupon = async () => {
     if (!manualCouponCode.trim()) return;
 
     setIsVerifyingCoupon(true);
-    setCouponStatus({ type: '', message: '' });
+    setCouponStatus({ type: "", message: "" });
 
     try {
-      const cleanPhone = profile?.phone ? profile.phone.replace(/\D/g, "").slice(-10) : "";
+      const cleanPhone = profile?.phone
+        ? profile.phone.replace(/\D/g, "").slice(-10)
+        : "";
 
-      const valRes = await validateCustomerCoupon(manualCouponCode.trim().toUpperCase(), cleanPhone);
+      const valRes = await validateCustomerCoupon(
+        manualCouponCode.trim().toUpperCase(),
+        cleanPhone,
+      );
 
       if (!valRes.valid) {
-        setCouponStatus({ type: "error", message: valRes.message || "Invalid coupon code" });
+        setCouponStatus({
+          type: "error",
+          message: valRes.message || "Invalid coupon code",
+        });
         setCouponApplied(false);
       } else {
         const data = valRes.coupon || {};
         setCoupon({
           id: data.id,
-          coupon_code: data.coupon_code || manualCouponCode.trim().toUpperCase(),
-          discount_percentage: valRes.discount_percentage || data.discount_percentage || 0,
+          coupon_code:
+            data.coupon_code || manualCouponCode.trim().toUpperCase(),
+          discount_percentage:
+            valRes.discount_percentage || data.discount_percentage || 0,
           discount_amount: valRes.discount_amount || data.discount_amount || 0,
-          source: "MANUAL_ENTRY"
+          source: "MANUAL_ENTRY",
         });
-        const discountPct = valRes.discount_percentage || data.discount_percentage || 0;
+        const discountPct =
+          valRes.discount_percentage || data.discount_percentage || 0;
         setCouponDiscount(discountPct);
         setCouponApplied(true);
-        const msg = (valRes.discount_amount || data.discount_amount) > 0
-          ? `Coupon applied! ₹${valRes.discount_amount || data.discount_amount} off`
-          : `Coupon applied! ${discountPct}% off`;
+        const msg =
+          (valRes.discount_amount || data.discount_amount) > 0
+            ? `Coupon applied! ₹${valRes.discount_amount || data.discount_amount} off`
+            : `Coupon applied! ${discountPct}% off`;
         setCouponStatus({ type: "success", message: msg });
 
         // 🧹 Discard any stale banner claim so it doesn't leak into the booking
@@ -829,7 +1025,7 @@ export default function CheckoutScreen({ route }: Props) {
     setCouponApplied(false);
     setCoupon(null);
     setManualCouponCode("");
-    setCouponStatus({ type: '', message: '' });
+    setCouponStatus({ type: "", message: "" });
 
     // 🧹 Clear stale claimed offer so a removed banner coupon isn't reused later
     await clearClaimedOffer();
@@ -837,20 +1033,32 @@ export default function CheckoutScreen({ route }: Props) {
 
   /* ================= PARTIAL PAYMENT CONFIG ================= */
 
-  const [partialConfig, setPartialConfig] = useState<{ enabled: boolean, partialAmount: number, remainingAmount: number } | null>(null);
-  const [showPaymentSelectionModal, setShowPaymentSelectionModal] = useState(false);
-  const [paymentChoice, setPaymentChoice] = useState<"partial" | "full">("full");
+  const [partialConfig, setPartialConfig] = useState<{
+    enabled: boolean;
+    partialAmount: number;
+    remainingAmount: number;
+  } | null>(null);
+  const [showPaymentSelectionModal, setShowPaymentSelectionModal] =
+    useState(false);
+  const [paymentChoice, setPaymentChoice] = useState<"partial" | "full">(
+    "full",
+  );
 
   useEffect(() => {
     const fetchPartialConfig = async () => {
-      const serviceIds = checkoutServices.map((s: SelectedService) => s.id).filter(Boolean);
+      const serviceIds = checkoutServices
+        .map((s: SelectedService) => s.id)
+        .filter(Boolean);
       if (serviceIds.length === 0) return;
       let data: any[] = [];
       try {
         const allSvcs = await getCustomerServices();
         data = (allSvcs || []).filter((s: any) => serviceIds.includes(s.id));
       } catch (err) {
-        console.error("[CUSTOMER FASTAPI] Error fetching services for partial payment:", err);
+        console.error(
+          "[CUSTOMER FASTAPI] Error fetching services for partial payment:",
+          err,
+        );
       }
 
       if (data && data.length > 0) {
@@ -858,8 +1066,10 @@ export default function CheckoutScreen({ route }: Props) {
         let totalPartial = 0;
         let totalRemaining = 0;
 
-        data.forEach(srv => {
-          const matchedService = checkoutServices.find((s: SelectedService) => s.id === srv.id);
+        data.forEach((srv) => {
+          const matchedService = checkoutServices.find(
+            (s: SelectedService) => s.id === srv.id,
+          );
           const qty = matchedService?.quantity || 1;
 
           if (srv.partial_payment_enabled) {
@@ -873,21 +1083,31 @@ export default function CheckoutScreen({ route }: Props) {
           setPartialConfig({
             enabled: true,
             partialAmount: totalPartial,
-            remainingAmount: totalRemaining
+            remainingAmount: totalRemaining,
           });
         } else {
           setPartialConfig(null);
         }
       }
     };
-    fetchPartialConfig();
+    const loadInitialPartialConfig = async () => {
+      try {
+        await fetchPartialConfig();
+      } catch (err) {
+        console.error("Error loading partial payment configuration:", err);
+      } finally {
+        setLoadingPartialConfig(false);
+      }
+    };
+
+    loadInitialPartialConfig();
   }, [checkoutServices]);
 
   /* ================= TOTALS ================= */
 
   const totalSavings = useMemo(
     () => totalOriginalPrice - totalPrice,
-    [totalOriginalPrice, totalPrice]
+    [totalOriginalPrice, totalPrice],
   );
 
   const totalDuration = useMemo(
@@ -895,22 +1115,25 @@ export default function CheckoutScreen({ route }: Props) {
       formatMinutes(
         checkoutServices.reduce((sum, s) => {
           const qty = s.quantity || 1;
-          return sum + (parseDurationToMinutes(s.duration) * qty);
-        }, 0)
+          return sum + parseDurationToMinutes(s.duration) * qty;
+        }, 0),
       ),
-    [checkoutServices]
+    [checkoutServices],
   );
 
   const totalTax = useMemo(
-    () => checkoutServices.reduce((sum, s) => {
-      const qty = s.quantity || 1;
-      const servicePrice = parsePrice(s.price);
-      // Parse tax_percent - handle text type with "%" symbol
-      const taxPercentStr = String(s.tax_percent ?? '0').replace(/%/g, '').trim();
-      const taxPercent = Number(taxPercentStr) || 0;
-      return sum + ((servicePrice * taxPercent) / 100) * qty;
-    }, 0),
-    [checkoutServices]
+    () =>
+      checkoutServices.reduce((sum, s) => {
+        const qty = s.quantity || 1;
+        const servicePrice = parsePrice(s.price);
+        // Parse tax_percent - handle text type with "%" symbol
+        const taxPercentStr = String(s.tax_percent ?? "0")
+          .replace(/%/g, "")
+          .trim();
+        const taxPercent = Number(taxPercentStr) || 0;
+        return sum + ((servicePrice * taxPercent) / 100) * qty;
+      }, 0),
+    [checkoutServices],
   );
 
   const grandTotal = useMemo(() => {
@@ -922,8 +1145,12 @@ export default function CheckoutScreen({ route }: Props) {
       if (coupon.discount_amount && coupon.discount_amount > 0) {
         finalTotal = Math.max(0, baseTotal - coupon.discount_amount);
       } else if (couponDiscount > 0) {
-        const baseForDiscount = totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
-        finalTotal = Math.max(0, baseForDiscount - calculatedCouponDiscountAmount + totalTax);
+        const baseForDiscount =
+          totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
+        finalTotal = Math.max(
+          0,
+          baseForDiscount - calculatedCouponDiscountAmount + totalTax,
+        );
       }
     }
 
@@ -935,7 +1162,16 @@ export default function CheckoutScreen({ route }: Props) {
     }
 
     return finalTotal;
-  }, [totalPrice, totalOriginalPrice, totalTax, couponApplied, couponDiscount, useWallet, walletBalance, coupon]);
+  }, [
+    totalPrice,
+    totalOriginalPrice,
+    totalTax,
+    couponApplied,
+    couponDiscount,
+    useWallet,
+    walletBalance,
+    coupon,
+  ]);
 
   const walletDeductionAmount = useMemo(() => {
     if (!useWallet || walletBalance <= 0) return 0;
@@ -946,13 +1182,25 @@ export default function CheckoutScreen({ route }: Props) {
       if (coupon.discount_amount && coupon.discount_amount > 0) {
         finalTotal = Math.max(0, baseTotal - coupon.discount_amount);
       } else if (couponDiscount > 0) {
-        const baseForDiscount = totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
-        finalTotal = Math.max(0, baseForDiscount - calculatedCouponDiscountAmount + totalTax);
+        const baseForDiscount =
+          totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice;
+        finalTotal = Math.max(
+          0,
+          baseForDiscount - calculatedCouponDiscountAmount + totalTax,
+        );
       }
     }
     return Math.min(finalTotal, walletBalance);
-  }, [totalPrice, totalOriginalPrice, totalTax, couponApplied, couponDiscount, useWallet, walletBalance, coupon]);
-
+  }, [
+    totalPrice,
+    totalOriginalPrice,
+    totalTax,
+    couponApplied,
+    couponDiscount,
+    useWallet,
+    walletBalance,
+    coupon,
+  ]);
 
   /* ================= PAYMENT ================= */
 
@@ -960,32 +1208,58 @@ export default function CheckoutScreen({ route }: Props) {
 
   const _executePlaceOrder = async (skipModalCheck = false) => {
     if (!userId) {
-      setAlertConfig({ title: 'Error', message: 'Missing user session', type: 'error' });
+      setAlertConfig({
+        title: "Error",
+        message: "Missing user session",
+        type: "error",
+      });
       setShowAlertModal(true);
       return;
     }
 
     if (isProcessing) return;
 
+    // Validate mandatory invoice email
+    if (!invoiceEmail.trim()) {
+      setAlertConfig({
+        title: "Email Required",
+        message: "Please enter your email address for invoice.",
+        type: "warning",
+      });
+      setShowAlertModal(true);
+      return;
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invoiceEmail.trim())) {
+      setAlertConfig({
+        title: "Invalid Email",
+        message: "Please enter a valid email address for invoice.",
+        type: "warning",
+      });
+      setShowAlertModal(true);
+      return;
+    }
+
     const userPhone = profile?.phone || "";
 
     if (!userPhone.trim()) {
       setAlertConfig({
-        title: 'Missing Phone Number',
-        message: 'Please enter your phone number to proceed.',
-        type: 'warning'
+        title: "Missing Phone Number",
+        message: "Please enter your phone number to proceed.",
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
     }
 
     // ✅ Validate Phone Number (Must be exactly 10 digits)
-    const phoneDigits = userPhone.replace(/\D/g, ''); // Remove non-digits
+    const phoneDigits = userPhone.replace(/\D/g, ""); // Remove non-digits
     if (phoneDigits.length !== 10) {
       setAlertConfig({
-        title: 'Invalid Phone Number',
-        message: 'Phone number must be exactly 10 digits.',
-        type: 'warning'
+        title: "Invalid Phone Number",
+        message: "Phone number must be exactly 10 digits.",
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
@@ -994,9 +1268,9 @@ export default function CheckoutScreen({ route }: Props) {
     // ✅ Validate Address
     if (!manualAddress.trim() || !pincode.trim()) {
       setAlertConfig({
-        title: 'Missing Address',
-        message: 'Please enter your full address and pincode.',
-        type: 'warning'
+        title: "Missing Address",
+        message: "Please enter your full address and pincode.",
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
@@ -1004,9 +1278,9 @@ export default function CheckoutScreen({ route }: Props) {
 
     if (pincode.trim().length !== 6) {
       setAlertConfig({
-        title: 'Invalid Pincode',
-        message: 'Please enter a valid 6-digit pincode.',
-        type: 'warning'
+        title: "Invalid Pincode",
+        message: "Please enter a valid 6-digit pincode.",
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
@@ -1015,9 +1289,10 @@ export default function CheckoutScreen({ route }: Props) {
     // ✅ Validate Checkboxes
     if (!acceptedPolicies || !acceptedTerms) {
       setAlertConfig({
-        title: 'Agreement Required',
-        message: 'Please accept both User Policies and Terms & Conditions to proceed with payment.',
-        type: 'info'
+        title: "Agreement Required",
+        message:
+          "Please accept both User Policies and Terms & Conditions to proceed with payment.",
+        type: "info",
       });
       setShowAlertModal(true);
       return;
@@ -1026,9 +1301,9 @@ export default function CheckoutScreen({ route }: Props) {
     // ✅ Block payment if pincode not serviceable
     if (!isPincodeServiceable) {
       setAlertConfig({
-        title: 'Service Not Available',
-        message: 'Services will be available soon in your area.',
-        type: 'info'
+        title: "Service Not Available",
+        message: "Services will be available soon in your area.",
+        type: "info",
       });
       setShowAlertModal(true);
       return;
@@ -1047,10 +1322,12 @@ export default function CheckoutScreen({ route }: Props) {
     updateCustomerProfile({
       address: fullAddress,
       pincode: pincode,
-    }).catch(err => console.log("Failed to auto-save profile", err));
+    }).catch((err) => console.log("Failed to auto-save profile", err));
 
     // Safely handle undefined by providing a fallback string before splitting
-    const [datePart, timePart] = (bookingDateText || "Pending at Pending").split(" at ");
+    const [datePart, timePart] = (
+      bookingDateText || "Pending at Pending"
+    ).split(" at ");
 
     let finalLat = bookingLatitude;
     let finalLng = bookingLongitude;
@@ -1058,7 +1335,10 @@ export default function CheckoutScreen({ route }: Props) {
     // ✅ Silent Geocoding: If coordinates are missing (manual entry), try to geocode the address
     if (!finalLat || !finalLng) {
       try {
-        console.log("📍 Missing coordinates. Attempting silent geocode for:", fullAddress);
+        console.log(
+          "📍 Missing coordinates. Attempting silent geocode for:",
+          fullAddress,
+        );
         const geoResults = await Location.geocodeAsync(fullAddress);
         if (geoResults && geoResults.length > 0) {
           finalLat = geoResults[0].latitude;
@@ -1084,19 +1364,13 @@ export default function CheckoutScreen({ route }: Props) {
       //   }
       // }
 
-
-
       let promotionalBannerId = null;
       let promotionalServiceId = null;
 
       // Only attach the banner ID if the applied coupon actually came
       // from a promotional banner. This prevents stale claimed offers
       // from leaking into unrelated bookings (e.g. manual coupon bookings).
-      if (
-        couponApplied &&
-        coupon &&
-        coupon.source === "PROMOTIONAL_BANNER"
-      ) {
+      if (couponApplied && coupon && coupon.source === "PROMOTIONAL_BANNER") {
         const claimed = await getClaimedOffer();
         if (claimed && claimed.bannerId) {
           promotionalBannerId = claimed.bannerId;
@@ -1118,18 +1392,22 @@ export default function CheckoutScreen({ route }: Props) {
         paid_amount: 0,
         remaining_amount: Number(grandTotal.toFixed(2)),
         payment_status: "pending",
-        payment_plan: paymentChoice === "partial" && partialConfig ? "PARTIAL" : "FULL",
+        payment_plan:
+          paymentChoice === "partial" && partialConfig ? "PARTIAL" : "FULL",
         payment_method: "razorpay",
         coupon_code: couponApplied && coupon ? coupon.coupon_code : null,
-        coupon_discount_percentage: couponApplied && coupon ? couponDiscount : 0,
-        coupon_discount_amount: couponApplied && coupon
-          ? (coupon.discount_amount && coupon.discount_amount > 0
-            ? coupon.discount_amount
-            : calculatedCouponDiscountAmount)
-          : 0,
-        wallet_deduction: (useWallet && walletBalance > 0)
-          ? Math.min(totalPrice + totalTax, walletBalance)
-          : 0,
+        coupon_discount_percentage:
+          couponApplied && coupon ? couponDiscount : 0,
+        coupon_discount_amount:
+          couponApplied && coupon
+            ? coupon.discount_amount && coupon.discount_amount > 0
+              ? coupon.discount_amount
+              : calculatedCouponDiscountAmount
+            : 0,
+        wallet_deduction:
+          useWallet && walletBalance > 0
+            ? Math.min(totalPrice + totalTax, walletBalance)
+            : 0,
         promotional_banner_id: promotionalBannerId,
       });
 
@@ -1154,19 +1432,26 @@ export default function CheckoutScreen({ route }: Props) {
           success: true,
           paymentId: "test_pay_" + Date.now(),
           orderId: "test_ord_" + Date.now(),
-          signature: "test_sig_123"
+          signature: "test_sig_123",
         };
       } else {
-        payment = await processPayment(paymentChoice === "partial" && partialConfig ? partialConfig.partialAmount : Number(grandTotal.toFixed(2)), {
-          firstName,
-          lastName,
-          email: invoiceEmail,
-          phone: userPhone,
-          address: fullAddress,
-          city: "", // Consolidated into fullAddress
-          region: "",
-          zip: pincode,
-        }, bookingId, paymentChoice === "partial" ? "PARTIAL" : "FULL");
+        payment = await processPayment(
+          paymentChoice === "partial" && partialConfig
+            ? partialConfig.partialAmount
+            : Number(grandTotal.toFixed(2)),
+          {
+            firstName,
+            lastName,
+            email: invoiceEmail,
+            phone: userPhone,
+            address: fullAddress,
+            city: "", // Consolidated into fullAddress
+            region: "",
+            zip: pincode,
+          },
+          bookingId,
+          paymentChoice === "partial" ? "PARTIAL" : "FULL",
+        );
       }
 
       if (!payment?.success) {
@@ -1177,7 +1462,12 @@ export default function CheckoutScreen({ route }: Props) {
         });
 
         setIsProcessing(false);
-        setAlertConfig({ title: 'Payment Failed', message: "We couldn't process your payment at this time. Please try again later.", type: 'error' });
+        setAlertConfig({
+          title: "Payment Failed",
+          message:
+            "We couldn't process your payment at this time. Please try again later.",
+          type: "error",
+        });
         setShowAlertModal(true);
         return;
       }
@@ -1191,24 +1481,36 @@ export default function CheckoutScreen({ route }: Props) {
         razorpay_order_id: payment.orderId,
         razorpay_signature: payment.signature,
         payment_verified: true,
-        payment_status: paymentChoice === "partial" && partialConfig ? "partial" : "paid",
-        payment_plan: paymentChoice === "partial" && partialConfig ? "PARTIAL" : "FULL",
-        paid_amount: paymentChoice === "partial" && partialConfig ? partialConfig.partialAmount : Number(grandTotal.toFixed(2)),
-        remaining_amount: paymentChoice === "partial" && partialConfig ? (Number(grandTotal.toFixed(2)) - partialConfig.partialAmount) : 0,
+        payment_status:
+          paymentChoice === "partial" && partialConfig ? "partial" : "paid",
+        payment_plan:
+          paymentChoice === "partial" && partialConfig ? "PARTIAL" : "FULL",
+        paid_amount:
+          paymentChoice === "partial" && partialConfig
+            ? partialConfig.partialAmount
+            : Number(grandTotal.toFixed(2)),
+        remaining_amount:
+          paymentChoice === "partial" && partialConfig
+            ? Number(grandTotal.toFixed(2)) - partialConfig.partialAmount
+            : 0,
       });
 
       console.log("✅ Booking payment verified and updated via customer API");
 
       // Referral reward logic moved to database trigger (on COMPLETED status)
 
-
       // ✅ Booking confirmation and payment alerts are dispatched automatically by backend
-      console.log("✅ Booking confirmation and payment alerts dispatched via backend API");
+      console.log(
+        "✅ Booking confirmation and payment alerts dispatched via backend API",
+      );
 
       // Clear cart, session-claimed offer & profile promo fields via customer API
       await clearCustomerCart();
       await clearClaimedOffer();
-      await updateCustomerProfile({ promotional_banner_selected: null, service_selected: null });
+      await updateCustomerProfile({
+        promotional_banner_selected: null,
+        service_selected: null,
+      });
 
       setIsProcessing(false);
 
@@ -1236,14 +1538,13 @@ export default function CheckoutScreen({ route }: Props) {
           ],
         });
       }, 2500);
-
     } catch (err: any) {
       console.error("❌ Order error:", err);
       setIsProcessing(false);
       setAlertConfig({
-        title: 'Error',
-        message: err?.message || 'Something went wrong. Please try again.',
-        type: 'error'
+        title: "Error",
+        message: err?.message || "Something went wrong. Please try again.",
+        type: "error",
       });
       setShowAlertModal(true);
     }
@@ -1254,22 +1555,40 @@ export default function CheckoutScreen({ route }: Props) {
   /* ================= UI ================= */
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
       <Header />
 
-      <View style={[styles.headerContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>{t("checkout.title")}</Text>
+      <View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {t("checkout.title")}
+          </Text>
           <TouchableOpacity
             onPress={() => {
               const phoneNumber = "tel:7617618567";
-              Linking.canOpenURL(phoneNumber).then(supported => {
+              Linking.canOpenURL(phoneNumber).then((supported) => {
                 if (supported) Linking.openURL(phoneNumber);
               });
             }}
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: "row",
+              alignItems: "center",
               paddingVertical: 6,
               paddingHorizontal: 12,
               borderRadius: 20,
@@ -1278,13 +1597,24 @@ export default function CheckoutScreen({ route }: Props) {
               gap: 4,
             }}
           >
-            <Ionicons name="help-circle-outline" size={20} color={theme.primary} />
-            <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primary }}>Help</Text>
+            <Ionicons
+              name="help-circle-outline"
+              size={20}
+              color={theme.primary}
+            />
+            <Text
+              style={{ fontSize: 14, fontWeight: "700", color: theme.primary }}
+            >
+              Help
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: theme.background }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1, backgroundColor: theme.background }}
+      >
         <ScrollView
           style={{ backgroundColor: theme.background }}
           contentContainerStyle={[styles.container, bottomNavPadding]}
@@ -1299,9 +1629,21 @@ export default function CheckoutScreen({ route }: Props) {
           }
         >
           {/* ORDER SUMMARY */}
-          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <View style={[styles.sectionHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>{t("checkout.orderSummary")}</Text>
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
+            <View
+              style={[
+                styles.sectionHeader,
+                { borderBottomColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                {t("checkout.orderSummary")}
+              </Text>
             </View>
 
             {checkoutServices.map((s: SelectedService) => (
@@ -1311,16 +1653,29 @@ export default function CheckoutScreen({ route }: Props) {
                     {s.title}
                     {s.quantity && s.quantity > 1 ? ` (x${s.quantity})` : ""}
                   </Text>
-                  <Text style={[styles.muted, { color: theme.textLight }]}>{s.duration}</Text>
+                  <Text style={[styles.muted, { color: theme.textLight }]}>
+                    {s.duration}
+                  </Text>
                 </View>
 
                 {/* ✅ Pricing with discount - Calculate total based on quantity */}
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={[styles.price, { color: theme.text }]}>
-                    ₹{(parseFloat(s.price.replace(/[^\d]/g, "")) * (s.quantity || 1)).toLocaleString("en-IN")}
+                    ₹
+                    {(
+                      parseFloat(s.price.replace(/[^\d]/g, "")) *
+                      (s.quantity || 1)
+                    ).toLocaleString("en-IN")}
                   </Text>
-                  {(s.discount_label || (s.discount_percent && Number(s.discount_percent) > 0)) ? (
-                    <Text style={{ fontSize: 10, color: "#1E7E34", fontWeight: "700" }}>
+                  {s.discount_label ||
+                  (s.discount_percent && Number(s.discount_percent) > 0) ? (
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: "#1E7E34",
+                        fontWeight: "700",
+                      }}
+                    >
                       {s.discount_label || `${s.discount_percent}% off`}
                     </Text>
                   ) : null}
@@ -1329,41 +1684,105 @@ export default function CheckoutScreen({ route }: Props) {
             ))}
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <Text style={[styles.muted, { color: theme.textLight }]}>{t("checkout.totalDuration")}: {totalDuration}</Text>
+            <Text style={[styles.muted, { color: theme.textLight }]}>
+              {t("checkout.totalDuration")}: {totalDuration}
+            </Text>
 
             {/* 1. Original Total */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-              <Text style={{ color: theme.textLight, fontSize: 14 }}>{t("checkout.originalTotal") || "Original Total"}</Text>
-              <Text style={{ color: theme.textLight, fontSize: 14, textDecorationLine: (totalOriginalPrice > totalPrice || couponApplied) ? "line-through" : "none" }}>
-                ₹{(totalOriginalPrice > 0 ? totalOriginalPrice : totalPrice).toLocaleString("en-IN")}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 8,
+              }}
+            >
+              <Text style={{ color: theme.textLight, fontSize: 14 }}>
+                {t("checkout.originalTotal") || "Original Total"}
+              </Text>
+              <Text
+                style={{
+                  color: theme.textLight,
+                  fontSize: 14,
+                  textDecorationLine:
+                    totalOriginalPrice > totalPrice || couponApplied
+                      ? "line-through"
+                      : "none",
+                }}
+              >
+                ₹
+                {(totalOriginalPrice > 0
+                  ? totalOriginalPrice
+                  : totalPrice
+                ).toLocaleString("en-IN")}
               </Text>
             </View>
 
             {/* 2. Coupon Discount Row */}
             {couponApplied && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-                <Text style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 6,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}
+                >
                   Coupon ({coupon?.coupon_code})
                 </Text>
-                <Text style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}>
-                  -₹{calculatedCouponDiscountAmount.toLocaleString("en-IN")}{couponDiscount || coupon?.discount_percentage ? ` (${couponDiscount || coupon?.discount_percentage}% OFF)` : ""}
+                <Text
+                  style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}
+                >
+                  -₹{calculatedCouponDiscountAmount.toLocaleString("en-IN")}
+                  {couponDiscount || coupon?.discount_percentage
+                    ? ` (${couponDiscount || coupon?.discount_percentage}% OFF)`
+                    : ""}
                 </Text>
               </View>
             )}
 
             {/* 3. Subtotal */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>Subtotal</Text>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: 8,
+              }}
+            >
+              <Text
+                style={{ fontSize: 15, fontWeight: "600", color: theme.text }}
+              >
+                Subtotal
+              </Text>
+              <Text
+                style={{ fontSize: 15, fontWeight: "600", color: theme.text }}
+              >
                 ₹{effectiveSubtotal.toLocaleString("en-IN")}
               </Text>
             </View>
 
             {/* 4. You Save */}
             {totalEffectiveSavings > 0 ? (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6, backgroundColor: "#ECFDF5", paddingVertical: 6, paddingHorizontal: 8, borderRadius: 6 }}>
-                <Text style={{ color: "#047857", fontSize: 14, fontWeight: "700" }}>🎉 {t("checkout.youSave") || "You Save"}</Text>
-                <Text style={{ color: "#047857", fontSize: 14, fontWeight: "700" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 6,
+                  backgroundColor: "#ECFDF5",
+                  paddingVertical: 6,
+                  paddingHorizontal: 8,
+                  borderRadius: 6,
+                }}
+              >
+                <Text
+                  style={{ color: "#047857", fontSize: 14, fontWeight: "700" }}
+                >
+                  🎉 {t("checkout.youSave") || "You Save"}
+                </Text>
+                <Text
+                  style={{ color: "#047857", fontSize: 14, fontWeight: "700" }}
+                >
                   ₹{totalEffectiveSavings.toLocaleString("en-IN")}
                 </Text>
               </View>
@@ -1371,28 +1790,64 @@ export default function CheckoutScreen({ route }: Props) {
 
             {/* 5. Tax */}
             {totalTax > 0 && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-                <Text style={{ fontSize: 14, color: theme.textLight }}>Tax</Text>
-                <Text style={{ fontSize: 14, color: theme.textLight }}>₹{parseFloat(totalTax.toFixed(2)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 6,
+                }}
+              >
+                <Text style={{ fontSize: 14, color: theme.textLight }}>
+                  Tax
+                </Text>
+                <Text style={{ fontSize: 14, color: theme.textLight }}>
+                  ₹
+                  {parseFloat(totalTax.toFixed(2)).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </Text>
               </View>
             )}
 
             {/* Wallet Discount Row */}
             {useWallet && walletDeductionAmount > 0 && (
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 6 }}>
-                <Text style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 6,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}
+                >
                   Wallet Applied
                 </Text>
-                <Text style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}>
-                  -₹{parseFloat(walletDeductionAmount.toFixed(2)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <Text
+                  style={{ fontSize: 14, color: "#065F46", fontWeight: "600" }}
+                >
+                  -₹
+                  {parseFloat(walletDeductionAmount.toFixed(2)).toLocaleString(
+                    "en-IN",
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                  )}
                 </Text>
               </View>
             )}
 
             {/* 6. Amount to Pay */}
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: theme.text }]}>Amount to Pay</Text>
-              <Text style={styles.totalValue}>₹{parseFloat(grandTotal.toFixed(2)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={[styles.totalLabel, { color: theme.text }]}>
+                Amount to Pay
+              </Text>
+              <Text style={styles.totalValue}>
+                ₹
+                {parseFloat(grandTotal.toFixed(2)).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
             </View>
           </View>
 
@@ -1404,28 +1859,55 @@ export default function CheckoutScreen({ route }: Props) {
               <View style={styles.couponRow}>
                 <View style={styles.couponAppliedBadge}>
                   <Text style={styles.couponAppliedText}>
-                    ✅ {coupon.coupon_code} applied! ({coupon.discount_amount && coupon.discount_amount > 0 ? `₹${coupon.discount_amount} off` : `${coupon.discount_percentage}% off`})
+                    ✅ {coupon.coupon_code} applied! (
+                    {coupon.discount_amount && coupon.discount_amount > 0
+                      ? `₹${coupon.discount_amount} off`
+                      : `${coupon.discount_percentage}% off`}
+                    )
                   </Text>
                 </View>
                 <Pressable onPress={removeCoupon}>
-                  <Text style={{ color: "#EF4444", fontWeight: "700", fontSize: 14 }}>Remove</Text>
+                  <Text
+                    style={{
+                      color: "#EF4444",
+                      fontWeight: "700",
+                      fontSize: 14,
+                    }}
+                  >
+                    Remove
+                  </Text>
                 </Pressable>
               </View>
             ) : (
               <View>
                 <View style={styles.couponRow}>
-                  <View style={[styles.couponInputBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <View
+                    style={[
+                      styles.couponInputBox,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <TextInput
                       style={[styles.couponInput, { color: theme.text }]}
                       value={manualCouponCode}
-                      onChangeText={(text) => setManualCouponCode(text.toUpperCase())}
+                      onChangeText={(text) =>
+                        setManualCouponCode(text.toUpperCase())
+                      }
                       placeholder="ENTER CODE"
                       placeholderTextColor={theme.textLight}
                       autoCapitalize="characters"
                     />
                   </View>
                   <Pressable
-                    style={[styles.couponApplyBtn, (!manualCouponCode.trim() || isVerifyingCoupon) && { opacity: 0.5 }]}
+                    style={[
+                      styles.couponApplyBtn,
+                      (!manualCouponCode.trim() || isVerifyingCoupon) && {
+                        opacity: 0.5,
+                      },
+                    ]}
                     onPress={handleApplyManualCoupon}
                     disabled={!manualCouponCode.trim() || isVerifyingCoupon}
                   >
@@ -1440,12 +1922,30 @@ export default function CheckoutScreen({ route }: Props) {
                 {/* suggested coupon if auto-detected */}
                 {coupon && !couponApplied && (
                   <Pressable
-                    style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    style={{
+                      marginTop: 10,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
                     onPress={applyCoupon}
                   >
-                    <Text style={{ fontSize: 12, color: theme.textLight }}>🎉 Suggestion:</Text>
-                    <Text style={{ fontSize: 12, color: theme.primary, fontWeight: '700', textDecorationLine: 'underline' }}>
-                      Apply {coupon.coupon_code} ({coupon.discount_amount && coupon.discount_amount > 0 ? `₹${coupon.discount_amount} off` : `${coupon.discount_percentage}% off`})
+                    <Text style={{ fontSize: 12, color: theme.textLight }}>
+                      🎉 Suggestion:
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: theme.primary,
+                        fontWeight: "700",
+                        textDecorationLine: "underline",
+                      }}
+                    >
+                      Apply {coupon.coupon_code} (
+                      {coupon.discount_amount && coupon.discount_amount > 0
+                        ? `₹${coupon.discount_amount} off`
+                        : `${coupon.discount_percentage}% off`}
+                      )
                     </Text>
                   </Pressable>
                 )}
@@ -1453,65 +1953,170 @@ export default function CheckoutScreen({ route }: Props) {
             )}
 
             {couponStatus.message ? (
-              <Text style={[styles.couponSavingText, { color: couponStatus.type === 'error' ? '#EF4444' : '#065F46' }]}>
+              <Text
+                style={[
+                  styles.couponSavingText,
+                  {
+                    color:
+                      couponStatus.type === "error" ? "#EF4444" : "#065F46",
+                  },
+                ]}
+              >
                 {couponStatus.message}
               </Text>
             ) : couponApplied && coupon ? (
               <Text style={styles.couponSavingText}>
-                You save ₹{coupon.discount_amount && coupon.discount_amount > 0
+                You save ₹
+                {coupon.discount_amount && coupon.discount_amount > 0
                   ? coupon.discount_amount
-                  : calculatedCouponDiscountAmount.toFixed(2)} with this coupon!
+                  : calculatedCouponDiscountAmount.toFixed(2)}{" "}
+                with this coupon!
               </Text>
             ) : null}
           </View>
 
           {/* WALLET CREDIT */}
           {walletBalance > 0 && (
-            <View style={[styles.walletCard, { backgroundColor: useWallet ? "#FFFBEB" : "#F8FAFC", borderColor: useWallet ? COLORS.saffron : "#E2E8F0" }]}>
+            <View
+              style={[
+                styles.walletCard,
+                {
+                  backgroundColor: useWallet ? "#FFFBEB" : "#F8FAFC",
+                  borderColor: useWallet ? COLORS.saffron : "#E2E8F0",
+                },
+              ]}
+            >
               <View style={styles.walletHeader}>
                 <View style={styles.walletInfo}>
-                  <View style={[styles.walletIconContainer, { backgroundColor: useWallet ? "#FEF3C7" : "#EDF2F7" }]}>
-                    <Ionicons name="wallet-outline" size={20} color={useWallet ? "#92400E" : "#4A5568"} />
+                  <View
+                    style={[
+                      styles.walletIconContainer,
+                      { backgroundColor: useWallet ? "#FEF3C7" : "#EDF2F7" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="wallet-outline"
+                      size={20}
+                      color={useWallet ? "#92400E" : "#4A5568"}
+                    />
                   </View>
                   <View>
-                    <Text style={[styles.walletTitle, { color: useWallet ? "#92400E" : "#2D3748" }]}>Discount Wallet</Text>
-                    <Text style={[styles.walletBalance, { color: useWallet ? "#B45309" : "#718096" }]}>₹{walletBalance} available</Text>
+                    <Text
+                      style={[
+                        styles.walletTitle,
+                        { color: useWallet ? "#92400E" : "#2D3748" },
+                      ]}
+                    >
+                      Discount Wallet
+                    </Text>
+                    <Text
+                      style={[
+                        styles.walletBalance,
+                        { color: useWallet ? "#B45309" : "#718096" },
+                      ]}
+                    >
+                      ₹{walletBalance} available
+                    </Text>
                   </View>
                 </View>
                 <TouchableOpacity
                   onPress={() => setUseWallet(!useWallet)}
-                  style={[styles.walletToggle, { backgroundColor: useWallet ? COLORS.saffron : "#E2E8F0" }]}
+                  style={[
+                    styles.walletToggle,
+                    { backgroundColor: useWallet ? COLORS.saffron : "#E2E8F0" },
+                  ]}
                 >
-                  <View style={[styles.toggleCircle, { transform: [{ translateX: useWallet ? 18 : 2 }] }]} />
+                  <View
+                    style={[
+                      styles.toggleCircle,
+                      { transform: [{ translateX: useWallet ? 18 : 2 }] },
+                    ]}
+                  />
                 </TouchableOpacity>
               </View>
               {useWallet && (
                 <View style={styles.walletAppliedBadge}>
-                  <Text style={styles.walletAppliedText}>- ₹{walletDeductionAmount.toFixed(2)} applied from wallet</Text>
+                  <Text style={styles.walletAppliedText}>
+                    - ₹{walletDeductionAmount.toFixed(2)} applied from wallet
+                  </Text>
                 </View>
               )}
             </View>
           )}
 
           {/* ADDRESS */}
-          <Text style={[styles.sectionHeading, { color: theme.text }]}>{t("checkout.serviceAddress")}</Text>
+          <Text style={[styles.sectionHeading, { color: theme.text }]}>
+            {t("checkout.serviceAddress")}
+          </Text>
 
-          <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
             {/* ✅ Customer Details */}
-            <View style={{ marginBottom: 16, paddingHorizontal: 16, paddingTop: 16 }}>
-              <Text style={{ fontSize: 12, color: theme.textLight, marginBottom: 4 }}>Name</Text>
-              <Text style={{ fontSize: 16, color: theme.text, fontWeight: '500', marginBottom: 12 }}>{profile?.full_name || "N/A"}</Text>
+            <View
+              style={{
+                marginBottom: 16,
+                paddingHorizontal: 16,
+                paddingTop: 16,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.textLight,
+                  marginBottom: 4,
+                }}
+              >
+                Name
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: theme.text,
+                  fontWeight: "500",
+                  marginBottom: 12,
+                }}
+              >
+                {profile?.full_name || "N/A"}
+              </Text>
 
-              <Text style={{ fontSize: 12, color: theme.textLight, marginBottom: 4 }}>Phone Number</Text>
-              <Text style={{ fontSize: 16, color: theme.text, fontWeight: '500', marginBottom: 12 }}>{profile?.phone || "N/A"}</Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.textLight,
+                  marginBottom: 4,
+                }}
+              >
+                Phone Number
+              </Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: theme.text,
+                  fontWeight: "500",
+                  marginBottom: 12,
+                }}
+              >
+                {profile?.phone || "N/A"}
+              </Text>
 
-              <Text style={{ fontSize: 12, color: theme.textLight, marginBottom: 4 }}>Email for Invoice</Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.textLight,
+                  marginBottom: 4,
+                }}
+              >
+                Email for Invoice <Text style={{ color: "#EF4444" }}>*</Text>
+              </Text>
               <TextInput
                 style={{
                   fontSize: 16,
                   color: theme.text,
-                  fontWeight: '500',
+                  fontWeight: "500",
                   paddingVertical: 8,
                   paddingHorizontal: 12,
                   borderWidth: 1,
@@ -1529,53 +2134,161 @@ export default function CheckoutScreen({ route }: Props) {
               />
             </View>
 
-            <View style={[styles.divider, { backgroundColor: theme.border, marginHorizontal: 16 }]} />
+            <View
+              style={[
+                styles.divider,
+                { backgroundColor: theme.border, marginHorizontal: 16 },
+              ]}
+            />
 
             {/* Address Box */}
-            <View style={[styles.addressSection, { backgroundColor: theme.background, borderColor: theme.border, borderTopWidth: 0 }]}>
+            <View
+              style={[
+                styles.addressSection,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  borderTopWidth: 0,
+                },
+              ]}
+            >
               {/* ✅ SELECTED SERVICE AREA CONTEXT (IF ANY) */}
               {serviceAreaContext && (
                 <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                  <Text style={{ fontSize: 12, color: theme.textLight, marginBottom: 4 }}>Service Area Context</Text>
-                  <Text style={{ fontSize: 16, color: theme.text, fontWeight: '600' }}>{serviceAreaContext.name}</Text>
-                  <Text style={{ fontSize: 14, color: theme.text }}>Pincode: {serviceAreaContext.pincode}</Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: theme.textLight,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Service Area Context
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: theme.text,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {serviceAreaContext.name}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: theme.text }}>
+                    Pincode: {serviceAreaContext.pincode}
+                  </Text>
                 </View>
               )}
 
               {/* ✅ SELECTED ADDRESS CARD */}
-              <View style={[styles.summaryCard, { backgroundColor: theme.surfaceVariant, marginHorizontal: 16, marginBottom: 16 }]}>
+              <View
+                style={[
+                  styles.summaryCard,
+                  {
+                    backgroundColor: theme.surfaceVariant,
+                    marginHorizontal: 16,
+                    marginBottom: 16,
+                  },
+                ]}
+              >
                 <View style={styles.summaryContent}>
                   <Pressable
-                    style={[styles.locationIconCircle, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    style={[
+                      styles.locationIconCircle,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                      },
+                    ]}
                     onPress={handleViewOnMap}
                   >
                     <Ionicons name="location" size={20} color={theme.text} />
                   </Pressable>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.summaryTitle, { color: theme.textLight }]}>{t("checkout.serviceAddress")}</Text>
+                    <Text
+                      style={[styles.summaryTitle, { color: theme.textLight }]}
+                    >
+                      {t("checkout.serviceAddress")}
+                    </Text>
                     <Text style={[styles.summaryText, { color: theme.text }]}>
-                      {manualAddress || pincode ? `${manualAddress}${pincode ? " - " + pincode : ""}` : "No address provided"}
+                      {manualAddress || pincode
+                        ? `${manualAddress}${pincode ? " - " + pincode : ""}`
+                        : "No address provided"}
                     </Text>
                   </View>
                   <Pressable
-                    style={[styles.editButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    style={[
+                      styles.editButton,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                      },
+                    ]}
                     onPress={() => setIsAddressSummaryMode(false)}
                   >
-                    <Ionicons name="create-outline" size={18} color={theme.text} />
-                    <Text style={[styles.editButtonText, { color: theme.text }]}>{manualAddress || pincode ? "Edit" : "Add"}</Text>
+                    <Ionicons
+                      name="create-outline"
+                      size={18}
+                      color={theme.text}
+                    />
+                    <Text
+                      style={[styles.editButtonText, { color: theme.text }]}
+                    >
+                      {manualAddress || pincode ? "Edit" : "Add"}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
 
               {/* ADDRESS EDIT MODAL POPUP */}
-              <Modal visible={!isAddressSummaryMode} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setIsAddressSummaryMode(true)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" }}>
-                  <View style={{ width: '90%', padding: 20, borderRadius: 16, backgroundColor: theme.background }}>
-                    <Text style={{ fontSize: 18, fontWeight: "700", color: theme.text, marginBottom: 15 }}>{t("checkout.serviceAddress")}</Text>
+              <Modal
+                visible={!isAddressSummaryMode}
+                transparent
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={() => setIsAddressSummaryMode(true)}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: "90%",
+                      padding: 20,
+                      borderRadius: 16,
+                      backgroundColor: theme.background,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "700",
+                        color: theme.text,
+                        marginBottom: 15,
+                      }}
+                    >
+                      {t("checkout.serviceAddress")}
+                    </Text>
 
-                    <Text style={[styles.label, { color: theme.text }]}>{t("checkout.fullAddress")}</Text>
+                    <Text style={[styles.label, { color: theme.text }]}>
+                      {t("checkout.fullAddress")}
+                    </Text>
                     <TextInput
-                      style={[styles.input, { height: 100, textAlignVertical: 'top', paddingTop: 12, backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                      style={[
+                        styles.input,
+                        {
+                          height: 100,
+                          textAlignVertical: "top",
+                          paddingTop: 12,
+                          backgroundColor: theme.surfaceVariant,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
                       value={manualAddress}
                       onChangeText={setManualAddress}
                       placeholder="Plot No, Flat No, Building Name, Area, City"
@@ -1584,9 +2297,23 @@ export default function CheckoutScreen({ route }: Props) {
                       numberOfLines={4}
                     />
 
-                    <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>{t("checkout.pincode")}</Text>
+                    <Text
+                      style={[
+                        styles.label,
+                        { color: theme.text, marginTop: 15 },
+                      ]}
+                    >
+                      {t("checkout.pincode")}
+                    </Text>
                     <TextInput
-                      style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: theme.surfaceVariant,
+                          borderColor: theme.border,
+                          color: theme.text,
+                        },
+                      ]}
                       value={pincode}
                       onChangeText={(text) => {
                         const onlyDigits = text.replace(/\D/g, "");
@@ -1598,35 +2325,80 @@ export default function CheckoutScreen({ route }: Props) {
                       placeholderTextColor={theme.textLight}
                     />
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }}>
-                      <Pressable onPress={fetchCurrentLocation} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 15,
+                      }}
+                    >
+                      <Pressable
+                        onPress={fetchCurrentLocation}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         {fetchingLocation ? (
-                          <ActivityIndicator size="small" color={theme.primary} />
+                          <ActivityIndicator
+                            size="small"
+                            color={theme.primary}
+                          />
                         ) : (
-                          <Ionicons name="location" size={18} color={theme.primary} />
+                          <Ionicons
+                            name="location"
+                            size={18}
+                            color={theme.primary}
+                          />
                         )}
-                        <Text style={{ color: theme.primary, fontWeight: '600' }}>
-                          {fetchingLocation ? "Fetching..." : t("checkout.useLocation")}
+                        <Text
+                          style={{ color: theme.primary, fontWeight: "600" }}
+                        >
+                          {fetchingLocation
+                            ? "Fetching..."
+                            : t("checkout.useLocation")}
                         </Text>
                       </Pressable>
                     </View>
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 25, gap: 12 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "flex-end",
+                        marginTop: 25,
+                        gap: 12,
+                      }}
+                    >
                       <Pressable
-                        style={{ padding: 12, borderRadius: 8, justifyContent: 'center' }}
+                        style={{
+                          padding: 12,
+                          borderRadius: 8,
+                          justifyContent: "center",
+                        }}
                         onPress={() => setIsAddressSummaryMode(true)}
                       >
-                        <Text style={{ color: theme.text, fontWeight: "600" }}>Cancel</Text>
+                        <Text style={{ color: theme.text, fontWeight: "600" }}>
+                          Cancel
+                        </Text>
                       </Pressable>
                       <Pressable
-                        style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 }}
+                        style={{
+                          backgroundColor: theme.primary,
+                          paddingHorizontal: 20,
+                          paddingVertical: 12,
+                          borderRadius: 8,
+                        }}
                         onPress={async () => {
                           setIsAddressSummaryMode(true);
                           setHasUsedLocationFetch(true);
                           handleManualGeocode(`${manualAddress}, ${pincode}`);
                         }}
                       >
-                        <Text style={{ color: '#000', fontWeight: '700' }}>Save Address</Text>
+                        <Text style={{ color: "#000", fontWeight: "700" }}>
+                          Save Address
+                        </Text>
                       </Pressable>
                     </View>
                   </View>
@@ -1644,7 +2416,7 @@ export default function CheckoutScreen({ route }: Props) {
                     : isPincodeServiceable
                       ? styles.serviceAvailableBox
                       : styles.serviceUnavailableBox,
-                  { marginTop: 12 }
+                  { marginTop: 12 },
                 ]}
               >
                 <Ionicons
@@ -1688,11 +2460,34 @@ export default function CheckoutScreen({ route }: Props) {
 
           {/* CHECKBOXES */}
           <View style={styles.checkboxContainer}>
-            <Pressable style={styles.checkboxRow} onPress={() => setAcceptedPolicies(!acceptedPolicies)}>
-              <View style={[styles.checkbox, acceptedPolicies && { backgroundColor: theme.primary, borderColor: theme.primary }, !acceptedPolicies && { borderColor: theme.primary, backgroundColor: theme.background }]}>
-                {acceptedPolicies && <Ionicons name="checkmark" size={16} color={theme.background} />}
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => setAcceptedPolicies(!acceptedPolicies)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  acceptedPolicies && {
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
+                  },
+                  !acceptedPolicies && {
+                    borderColor: theme.primary,
+                    backgroundColor: theme.background,
+                  },
+                ]}
+              >
+                {acceptedPolicies && (
+                  <Ionicons
+                    name="checkmark"
+                    size={16}
+                    color={theme.background}
+                  />
+                )}
               </View>
-              <Text style={[styles.checkboxLabel, { flex: 0, color: theme.text }]}>
+              <Text
+                style={[styles.checkboxLabel, { flex: 0, color: theme.text }]}
+              >
                 {t("checkout.acceptPolicies")}{" "}
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
@@ -1706,11 +2501,34 @@ export default function CheckoutScreen({ route }: Props) {
               </Text>
             </Pressable>
 
-            <Pressable style={styles.checkboxRow} onPress={() => setAcceptedTerms(!acceptedTerms)}>
-              <View style={[styles.checkbox, acceptedTerms && { backgroundColor: theme.primary, borderColor: theme.primary }, !acceptedTerms && { borderColor: theme.primary, backgroundColor: theme.background }]}>
-                {acceptedTerms && <Ionicons name="checkmark" size={16} color={theme.background} />}
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => setAcceptedTerms(!acceptedTerms)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  acceptedTerms && {
+                    backgroundColor: theme.primary,
+                    borderColor: theme.primary,
+                  },
+                  !acceptedTerms && {
+                    borderColor: theme.primary,
+                    backgroundColor: theme.background,
+                  },
+                ]}
+              >
+                {acceptedTerms && (
+                  <Ionicons
+                    name="checkmark"
+                    size={16}
+                    color={theme.background}
+                  />
+                )}
               </View>
-              <Text style={[styles.checkboxLabel, { flex: 0, color: theme.text }]}>
+              <Text
+                style={[styles.checkboxLabel, { flex: 0, color: theme.text }]}
+              >
                 {t("checkout.acceptTerms")}{" "}
                 <Text
                   style={[styles.linkText, { color: theme.primary }]}
@@ -1725,11 +2543,16 @@ export default function CheckoutScreen({ route }: Props) {
             </Pressable>
           </View>
 
-
           {/* PAY BUTTON */}
-          {(!manualAddress.trim() || !pincode.trim()) ? (
-            <View style={{ padding: 16, alignItems: 'center', opacity: 0.7 }}>
-              <Text style={{ color: theme.textMuted, fontSize: 13, textAlign: 'center' }}>
+          {!manualAddress.trim() || !pincode.trim() ? (
+            <View style={{ padding: 16, alignItems: "center", opacity: 0.7 }}>
+              <Text
+                style={{
+                  color: theme.textMuted,
+                  fontSize: 13,
+                  textAlign: "center",
+                }}
+              >
                 Please provide a valid service address to place your order.
               </Text>
             </View>
@@ -1743,7 +2566,7 @@ export default function CheckoutScreen({ route }: Props) {
                   !acceptedPolicies ||
                   !acceptedTerms ||
                   !isPincodeServiceable) &&
-                styles.payBtnDisabled,
+                  styles.payBtnDisabled,
               ]}
               onPress={handlePlaceOrder}
               disabled={
@@ -1769,7 +2592,14 @@ export default function CheckoutScreen({ route }: Props) {
       </KeyboardAvoidingView>
 
       {/* Loading Overlay */}
-      <LoadingOverlay visible={isProcessing} message="Processing your payment..." />
+      <LoadingOverlay
+        visible={isInitialLoading || isProcessing}
+        message={
+          isProcessing
+            ? "Processing your payment..."
+            : "Loading checkout details..."
+        }
+      />
 
       {/* Policies Modal */}
       <Modal
@@ -1779,25 +2609,47 @@ export default function CheckoutScreen({ route }: Props) {
         onRequestClose={() => setShowPoliciesModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>{t("checkout.policies")}</Text>
+          <View
+            style={[styles.modalContent, { backgroundColor: theme.background }]}
+          >
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {t("checkout.policies")}
+              </Text>
               <Pressable onPress={() => setShowPoliciesModal(false)}>
                 <Ionicons name="close" size={24} color={theme.text} />
               </Pressable>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+            >
               <Text style={styles.modalHeading}>Privacy & Data Protection</Text>
               <Text style={[styles.modalText, { color: theme.textLight }]}>
                 {policies?.user_policies
-                  ? policies.user_policies.replace(/^- /gm, '• ')
+                  ? policies.user_policies.replace(/^- /gm, "• ")
                   : "Loading policies..."}
               </Text>
             </ScrollView>
 
-            <Pressable style={[styles.modalCloseButton, { backgroundColor: theme.primary }]} onPress={() => setShowPoliciesModal(false)}>
-              <Text style={[styles.modalCloseButtonText, { color: theme.background }]}>Close</Text>
+            <Pressable
+              style={[
+                styles.modalCloseButton,
+                { backgroundColor: theme.primary },
+              ]}
+              onPress={() => setShowPoliciesModal(false)}
+            >
+              <Text
+                style={[
+                  styles.modalCloseButtonText,
+                  { color: theme.background },
+                ]}
+              >
+                Close
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -1824,34 +2676,162 @@ export default function CheckoutScreen({ route }: Props) {
             animationSpeed={3}
             style={{ width: "100%", maxWidth: 360 }}
           >
-            <View style={[styles.alertContent, { width: "100%", borderRadius: 20, margin: 0, backgroundColor: theme.background, alignItems: "stretch" }]}>
-              <Text style={[styles.alertTitle, { color: theme.text, marginBottom: 20 }]}>Select Payment</Text>
+            <View
+              style={[
+                styles.alertContent,
+                {
+                  width: "100%",
+                  borderRadius: 20,
+                  margin: 0,
+                  backgroundColor: theme.background,
+                  alignItems: "stretch",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.alertTitle,
+                  { color: theme.text, marginBottom: 20 },
+                ]}
+              >
+                Select Payment
+              </Text>
 
               <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: paymentChoice === "partial" ? theme.primary : theme.border, backgroundColor: paymentChoice === "partial" ? theme.surfaceVariant : theme.background }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 16,
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor:
+                    paymentChoice === "partial" ? theme.primary : theme.border,
+                  backgroundColor:
+                    paymentChoice === "partial"
+                      ? theme.surfaceVariant
+                      : theme.background,
+                }}
                 onPress={() => setPaymentChoice("partial")}
               >
-                <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: paymentChoice === "partial" ? theme.primary : theme.border, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  {paymentChoice === "partial" && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />}
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor:
+                      paymentChoice === "partial"
+                        ? theme.primary
+                        : theme.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  {paymentChoice === "partial" && (
+                    <View
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: theme.primary,
+                      }}
+                    />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: theme.text }}>Partial Payment</Text>
-                  <Text style={{ fontSize: 14, color: theme.textLight, marginTop: 4 }}>Remaining ₹{partialConfig?.remainingAmount}</Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: theme.text,
+                    }}
+                  >
+                    Partial Payment
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: theme.textLight,
+                      marginTop: 4,
+                    }}
+                  >
+                    Remaining ₹{partialConfig?.remainingAmount}
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: theme.primary }}>₹{partialConfig?.partialAmount}</Text>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: theme.primary,
+                  }}
+                >
+                  ₹{partialConfig?.partialAmount}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={{ flexDirection: "row", alignItems: "center", marginBottom: 24, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: paymentChoice === "full" ? theme.primary : theme.border, backgroundColor: paymentChoice === "full" ? theme.surfaceVariant : theme.background }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginBottom: 24,
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor:
+                    paymentChoice === "full" ? theme.primary : theme.border,
+                  backgroundColor:
+                    paymentChoice === "full"
+                      ? theme.surfaceVariant
+                      : theme.background,
+                }}
                 onPress={() => setPaymentChoice("full")}
               >
-                <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: paymentChoice === "full" ? theme.primary : theme.border, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  {paymentChoice === "full" && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />}
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor:
+                      paymentChoice === "full" ? theme.primary : theme.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  {paymentChoice === "full" && (
+                    <View
+                      style={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: 6,
+                        backgroundColor: theme.primary,
+                      }}
+                    />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", color: theme.text }}>Full Payment</Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: theme.text,
+                    }}
+                  >
+                    Full Payment
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: theme.primary }}>₹{Number(grandTotal.toFixed(2))}</Text>
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: theme.primary,
+                  }}
+                >
+                  ₹{Number(grandTotal.toFixed(2))}
+                </Text>
               </TouchableOpacity>
 
               <Pressable
@@ -1882,17 +2862,35 @@ export default function CheckoutScreen({ route }: Props) {
             animationSpeed={3}
             style={{ width: "85%", maxWidth: 400 }}
           >
-            <View style={[styles.successContent, { width: "100%", borderRadius: 24, margin: 0, backgroundColor: theme.background }]}>
+            <View
+              style={[
+                styles.successContent,
+                {
+                  width: "100%",
+                  borderRadius: 24,
+                  margin: 0,
+                  backgroundColor: theme.background,
+                },
+              ]}
+            >
               <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark-circle" size={80} color={theme.primary} />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={80}
+                  color={theme.primary}
+                />
               </View>
 
-              <Text style={[styles.successTitle, { color: theme.text }]}>{t("checkout.bookingConfirmed")}</Text>
+              <Text style={[styles.successTitle, { color: theme.text }]}>
+                {t("checkout.bookingConfirmed")}
+              </Text>
               <Text style={[styles.successMessage, { color: theme.textLight }]}>
                 {t("notifications.bookingSuccessMessage")}
               </Text>
 
-              <Text style={[styles.redirectText, { color: theme.primary }]}>{t("checkout.redirecting")}</Text>
+              <Text style={[styles.redirectText, { color: theme.primary }]}>
+                {t("checkout.redirecting")}
+              </Text>
             </View>
           </AnimatedGradientBorder>
         </View>
@@ -1912,40 +2910,54 @@ export default function CheckoutScreen({ route }: Props) {
             animationSpeed={3}
             style={{ width: "100%", maxWidth: 360 }}
           >
-            <View style={[styles.alertContent, { width: "100%", borderRadius: 20, margin: 0, backgroundColor: theme.background }]}>
+            <View
+              style={[
+                styles.alertContent,
+                {
+                  width: "100%",
+                  borderRadius: 20,
+                  margin: 0,
+                  backgroundColor: theme.background,
+                },
+              ]}
+            >
               {/* Icon based on type */}
               <View style={styles.alertIconContainer}>
                 <Ionicons
                   name={
-                    alertConfig.type === 'error'
-                      ? 'close-circle'
-                      : alertConfig.type === 'warning'
-                        ? 'alert-circle'
-                        : 'information-circle'
+                    alertConfig.type === "error"
+                      ? "close-circle"
+                      : alertConfig.type === "warning"
+                        ? "alert-circle"
+                        : "information-circle"
                   }
                   size={64}
                   color={
-                    alertConfig.type === 'error'
-                      ? '#EF4444'
-                      : alertConfig.type === 'warning'
-                        ? '#F4C430'
-                        : '#3B82F6'
+                    alertConfig.type === "error"
+                      ? "#EF4444"
+                      : alertConfig.type === "warning"
+                        ? "#F4C430"
+                        : "#3B82F6"
                   }
                 />
               </View>
 
               {/* Title and Message */}
-              <Text style={[styles.alertTitle, { color: theme.text }]}>{alertConfig.title}</Text>
-              <Text style={[styles.alertMessage, { color: theme.textLight }]}>{alertConfig.message}</Text>
+              <Text style={[styles.alertTitle, { color: theme.text }]}>
+                {alertConfig.title}
+              </Text>
+              <Text style={[styles.alertMessage, { color: theme.textLight }]}>
+                {alertConfig.message}
+              </Text>
 
               {/* OK Button */}
               <Pressable
                 style={[
                   styles.alertButton,
                   { backgroundColor: theme.primary },
-                  alertConfig.type === 'error' && styles.alertButtonError,
-                  alertConfig.type === 'warning' && styles.alertButtonWarning,
-                  alertConfig.type === 'info' && styles.alertButtonInfo,
+                  alertConfig.type === "error" && styles.alertButtonError,
+                  alertConfig.type === "warning" && styles.alertButtonWarning,
+                  alertConfig.type === "info" && styles.alertButtonInfo,
                 ]}
                 onPress={() => setShowAlertModal(false)}
               >
@@ -1955,7 +2967,6 @@ export default function CheckoutScreen({ route }: Props) {
           </AnimatedGradientBorder>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }

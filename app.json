@@ -32,10 +32,7 @@
         }
       },
       "versionCode": 15,
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -52,18 +49,12 @@
               "pathPrefix": "/service"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         },
         {
           "action": "VIEW",
           "autoVerify": true,
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ],
+          "category": ["BROWSABLE", "DEFAULT"],
           "data": [
             {
               "scheme": "https",
@@ -90,9 +81,7 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#ffffff",
-          "sounds": [
-            "./assets/sounds/my_custom_sound.wav"
-          ]
+          "sounds": ["./assets/sounds/my_custom_sound.wav"]
         }
       ],
       [
@@ -105,7 +94,9 @@
         }
       ],
       "expo-web-browser",
-      "expo-video"
+      "expo-video",
+      "expo-audio",
+      "expo-asset"
     ],
     "extra": {
       "router": {},

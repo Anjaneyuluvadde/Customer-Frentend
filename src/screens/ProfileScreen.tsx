@@ -3,7 +3,6 @@
 // import React, { memo, useCallback, useEffect, useState } from "react";
 // import { useFocusEffect } from "@react-navigation/native";
 
-
 // import {
 //   ActivityIndicator,
 //   Keyboard,
@@ -353,8 +352,6 @@
 //   };
 
 //   /* ================= LOADING ================= */
-
-
 
 //   /* ================= UI ================= */
 
@@ -861,28 +858,18 @@
 //   },
 // });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { Copy, Edit2, Gift, Phone, Save, Share as ShareIcon, Wallet, X } from "lucide-react-native";
+import {
+  Copy,
+  Edit2,
+  Gift,
+  Phone,
+  Save,
+  Share as ShareIcon,
+  Wallet,
+  X,
+} from "lucide-react-native";
 import React, { memo, useCallback, useState } from "react";
-
 
 import {
   ActivityIndicator,
@@ -899,22 +886,25 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../components/Header";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
 
 // import LanguageSelector from "../components/LanguageSelector"; // REMOVED
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useNotification } from "../hooks/useNotification";
-import { supabase } from "../lib/supabase";
 import { getCustomerProfile, updateCustomerProfile } from "../lib/customerApi";
+import { supabase } from "../lib/supabase";
 import { COLORS } from "../theme/colors";
-import { registerForPushNotificationsAsync, removePushTokenFromSupabase } from "../utils/pushNotifications";
 import { isTempEmail } from "../utils/authUtils";
-import { generateReferralCode } from "../utils/referralUtils";
+import {
+  registerForPushNotificationsAsync,
+  removePushTokenFromSupabase,
+} from "../utils/pushNotifications";
 
 /* ======================================================
    FIELD CARD (MOVED OUTSIDE – FIXES KEYBOARD ISSUE)
@@ -949,7 +939,12 @@ const FieldCard = memo(
   }: FieldCardProps & { fallback?: string }) => {
     const { theme } = useTheme();
     return (
-      <View style={[styles.fieldCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.fieldCard,
+          { backgroundColor: theme.background, borderColor: theme.border },
+        ]}
+      >
         <Text style={[styles.label, { color: theme.textMuted }]}>{label}</Text>
 
         {isEditing && editable ? (
@@ -960,7 +955,11 @@ const FieldCard = memo(
             placeholderTextColor={theme.textLight}
             style={[
               styles.input,
-              { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text },
+              {
+                backgroundColor: theme.surfaceVariant,
+                borderColor: theme.border,
+                color: theme.text,
+              },
               multiline ? styles.inputMultiline : null,
             ]}
             multiline={multiline}
@@ -975,7 +974,7 @@ const FieldCard = memo(
         )}
       </View>
     );
-  }
+  },
 );
 
 /* ======================================================
@@ -1019,6 +1018,8 @@ export default function ProfileScreen() {
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
   const fetchProfile = useCallback(async () => {
+    setLoading(true);
+
     try {
       const result = await getCustomerProfile();
       const profileData = result.profile;
@@ -1046,7 +1047,7 @@ export default function ProfileScreen() {
       showAlert({
         type: "error",
         title: t("common.error"),
-        message: t("notifications.profileLoadError")
+        message: t("notifications.profileLoadError"),
       });
     } finally {
       setLoading(false);
@@ -1056,7 +1057,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
-    }, [fetchProfile])
+    }, [fetchProfile]),
   );
 
   /* ================= UPDATE PROFILE ================= */
@@ -1068,7 +1069,7 @@ export default function ProfileScreen() {
       showAlert({
         type: "warning",
         title: t("notifications.invalidPin"),
-        message: t("notifications.pinCodeError")
+        message: t("notifications.pinCodeError"),
       });
       return;
     }
@@ -1101,7 +1102,7 @@ export default function ProfileScreen() {
       showAlert({
         type: "error",
         title: t("notifications.updateFailed"),
-        message: err.message
+        message: err.message,
       });
     } finally {
       setSaving(false);
@@ -1120,15 +1121,17 @@ export default function ProfileScreen() {
           showAlert({
             type: "error",
             title: t("common.error"),
-            message: t("notifications.callError")
+            message: t("notifications.callError"),
           });
         }
       })
-      .catch(() => showAlert({
-        type: "error",
-        title: t("common.error"),
-        message: t("notifications.dialerError")
-      }));
+      .catch(() =>
+        showAlert({
+          type: "error",
+          title: t("common.error"),
+          message: t("notifications.dialerError"),
+        }),
+      );
   };
 
   const handleShareReferral = async () => {
@@ -1181,54 +1184,50 @@ export default function ProfileScreen() {
   // };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            console.log("[LOGOUT] Starting logout");
             try {
-              console.log("[LOGOUT] Starting logout");
-              try {
-                const token = await registerForPushNotificationsAsync();
-                if (token) {
-                  await removePushTokenFromSupabase(token);
-                }
-              } catch (pushErr) {
-                console.error("Failed to remove push token on logout:", pushErr);
+              const token = await registerForPushNotificationsAsync();
+              if (token) {
+                await removePushTokenFromSupabase(token);
               }
-
-              const { error } = await supabase.auth.signOut();
-
-              if (error) {
-                console.error("[LOGOUT] signOut error:", error);
-                throw error;
-              }
-
-              console.log("[LOGOUT] Logout successful");
-
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
-            } catch (err: any) {
-              console.error("[LOGOUT] Logout failed:", err);
-
-              showToast(
-                err?.message || "Unable to logout. Please try again.",
-                "error"
-              );
+            } catch (pushErr) {
+              console.error("Failed to remove push token on logout:", pushErr);
             }
-          },
+
+            const { error } = await supabase.auth.signOut();
+
+            if (error) {
+              console.error("[LOGOUT] signOut error:", error);
+              throw error;
+            }
+
+            console.log("[LOGOUT] Logout successful");
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Login" }],
+            });
+          } catch (err: any) {
+            console.error("[LOGOUT] Logout failed:", err);
+
+            showToast(
+              err?.message || "Unable to logout. Please try again.",
+              "error",
+            );
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
   const onRefresh = async () => {
     setRefreshing(true);
@@ -1238,13 +1237,19 @@ export default function ProfileScreen() {
 
   /* ================= LOADING ================= */
 
-
-
   /* ================= UI ================= */
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      edges={["top"]}
+    >
       <Header isCurved={true} />
+
+      <LoadingOverlay
+        visible={loading && !refreshing}
+        message="Loading your profile..."
+      />
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: theme.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1266,9 +1271,16 @@ export default function ProfileScreen() {
           }
         >
           {/* HEADER */}
-          <View style={[styles.headerCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <View
+            style={[
+              styles.headerCard,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
             <View style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: theme.text }]}>{t("profile.title")}</Text>
+              <Text style={[styles.title, { color: theme.text }]}>
+                {t("profile.title")}
+              </Text>
               <Text style={[styles.subtitle, { color: theme.textMuted }]}>
                 {t("profile.manageDetails")}
               </Text>
@@ -1292,9 +1304,7 @@ export default function ProfileScreen() {
             value={formData.full_name}
             isEditing={isEditing}
             editable
-            onChangeText={(t) =>
-              setFormData((p) => ({ ...p, full_name: t }))
-            }
+            onChangeText={(t) => setFormData((p) => ({ ...p, full_name: t }))}
             placeholder={t("profile.fullNamePlaceholder")}
             fallback={t("profile.notProvided")}
           />
@@ -1305,9 +1315,7 @@ export default function ProfileScreen() {
             isEditing={isEditing}
             editable
             keyboardType="email-address"
-            onChangeText={(t) =>
-              setFormData((p) => ({ ...p, email: t }))
-            }
+            onChangeText={(t) => setFormData((p) => ({ ...p, email: t }))}
             placeholder={t("profile.emailHint") || "Enter your email"}
             fallback="--"
           />
@@ -1321,8 +1329,8 @@ export default function ProfileScreen() {
             maxLength={10}
             onChangeText={(t) => {
               // Strip non-digits and limit to 10
-              let cleaned = t.replace(/\D/g, '');
-              if (cleaned.startsWith('91') && cleaned.length > 10) {
+              let cleaned = t.replace(/\D/g, "");
+              if (cleaned.startsWith("91") && cleaned.length > 10) {
                 cleaned = cleaned.slice(2);
               }
               setFormData((p) => ({ ...p, phone: cleaned.slice(0, 10) }));
@@ -1337,9 +1345,7 @@ export default function ProfileScreen() {
             isEditing={isEditing}
             editable
             multiline
-            onChangeText={(t) =>
-              setFormData((p) => ({ ...p, address: t }))
-            }
+            onChangeText={(t) => setFormData((p) => ({ ...p, address: t }))}
             placeholder={t("profile.addressPlaceholder")}
             fallback={t("profile.noAddress")}
             valueStyle={{ fontWeight: "normal" }}
@@ -1352,71 +1358,176 @@ export default function ProfileScreen() {
             editable
             keyboardType="numeric"
             maxLength={6}
-            onChangeText={(t) =>
-              setFormData((p) => ({ ...p, pincode: t }))
-            }
+            onChangeText={(t) => setFormData((p) => ({ ...p, pincode: t }))}
             placeholder={t("profile.pincodePlaceholder")}
             fallback="--"
           />
 
           {/* REFER & EARN SECTION */}
           {!isEditing && (
-            <View style={[styles.referralCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.referralCard,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
               <View style={styles.referralHeader}>
-                <View style={[styles.referralIconContainer, { backgroundColor: "rgba(244, 196, 48, 0.15)" }]}>
+                <View
+                  style={[
+                    styles.referralIconContainer,
+                    { backgroundColor: "rgba(244, 196, 48, 0.15)" },
+                  ]}
+                >
                   <Gift size={22} color={COLORS.saffron} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.referralTitle, { color: theme.text }]}>Get ₹50 Discount Credits</Text>
-                  <Text style={[styles.referralSubtitle, { color: theme.textMuted }]}>
-                    Invite friends and get ₹50 off your next booking when they finish their first job.
+                  <Text style={[styles.referralTitle, { color: theme.text }]}>
+                    Get ₹50 Discount Credits
+                  </Text>
+                  <Text
+                    style={[
+                      styles.referralSubtitle,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Invite friends and get ₹50 off your next booking when they
+                    finish their first job.
                   </Text>
                 </View>
               </View>
 
-              <View style={[styles.codeContainer, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <View
+                style={[
+                  styles.codeContainer,
+                  {
+                    backgroundColor: theme.surfaceVariant,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={[styles.codeLabel, { color: theme.textMuted }]}>YOUR REFERRAL CODE</Text>
-                  <Text style={[styles.codeText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>{referralCode}</Text>
+                  <Text style={[styles.codeLabel, { color: theme.textMuted }]}>
+                    YOUR REFERRAL CODE
+                  </Text>
+                  <Text
+                    style={[styles.codeText, { color: theme.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {referralCode}
+                  </Text>
                 </View>
                 <View style={styles.codeActions}>
-                  <TouchableOpacity onPress={copyToClipboard} style={styles.iconBtn}>
+                  <TouchableOpacity
+                    onPress={copyToClipboard}
+                    style={styles.iconBtn}
+                  >
                     <Copy size={20} color={theme.text} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleShareReferral} style={[styles.shareBtnSmall, { backgroundColor: theme.primary }]}>
-                    <ShareIcon size={18} color={isDark ? theme.background : "#000"} />
-                    <Text style={[styles.shareBtnText, { color: isDark ? theme.background : "#000" }]}>Share</Text>
+                  <TouchableOpacity
+                    onPress={handleShareReferral}
+                    style={[
+                      styles.shareBtnSmall,
+                      { backgroundColor: theme.primary },
+                    ]}
+                  >
+                    <ShareIcon
+                      size={18}
+                      color={isDark ? theme.background : "#000"}
+                    />
+                    <Text
+                      style={[
+                        styles.shareBtnText,
+                        { color: isDark ? theme.background : "#000" },
+                      ]}
+                    >
+                      Share
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
-
             </View>
           )}
 
           {/* DISCOUNT BALANCE (WALLET BOX) */}
           {!isEditing && (
-            <View style={[styles.referralCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.referralCard,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
               <View style={styles.referralHeader}>
-                <View style={[styles.referralIconContainer, { backgroundColor: "rgba(244, 196, 48, 0.15)" }]}>
+                <View
+                  style={[
+                    styles.referralIconContainer,
+                    { backgroundColor: "rgba(244, 196, 48, 0.15)" },
+                  ]}
+                >
                   <Wallet size={22} color={COLORS.saffron} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.referralTitle, { color: theme.text }]}>Discount Balance</Text>
-                  <Text style={[styles.referralSubtitle, { color: theme.textMuted }]}>
-                    Your earned rewards and referral credits. Use them for your next booking!
+                  <Text style={[styles.referralTitle, { color: theme.text }]}>
+                    Discount Balance
+                  </Text>
+                  <Text
+                    style={[
+                      styles.referralSubtitle,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    Your earned rewards and referral credits. Use them for your
+                    next booking!
                   </Text>
                 </View>
               </View>
 
-              <View style={[styles.codeContainer, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+              <View
+                style={[
+                  styles.codeContainer,
+                  {
+                    backgroundColor: theme.surfaceVariant,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={[styles.codeLabel, { color: theme.textMuted }]}>AVAILABLE BALANCE</Text>
-                  <Text style={[styles.codeText, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>₹{walletBalance}</Text>
+                  <Text style={[styles.codeLabel, { color: theme.textMuted }]}>
+                    AVAILABLE BALANCE
+                  </Text>
+                  <Text
+                    style={[styles.codeText, { color: theme.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    ₹{walletBalance}
+                  </Text>
                 </View>
                 <View style={styles.codeActions}>
-                  <View style={[styles.shareBtnSmall, { backgroundColor: theme.primary }]}>
-                    <Wallet size={18} color={isDark ? theme.background : "#000"} />
-                    <Text style={[styles.shareBtnText, { color: isDark ? theme.background : "#000" }]}>Credits</Text>
+                  <View
+                    style={[
+                      styles.shareBtnSmall,
+                      { backgroundColor: theme.primary },
+                    ]}
+                  >
+                    <Wallet
+                      size={18}
+                      color={isDark ? theme.background : "#000"}
+                    />
+                    <Text
+                      style={[
+                        styles.shareBtnText,
+                        { color: isDark ? theme.background : "#000" },
+                      ]}
+                    >
+                      Credits
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -1426,17 +1537,39 @@ export default function ProfileScreen() {
           {/* Customer Care */}
           {!isEditing && (
             <TouchableOpacity
-              style={[styles.customerCareCard, { backgroundColor: theme.background, borderColor: theme.border }]}
+              style={[
+                styles.customerCareCard,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
               onPress={handleCallCustomerCare}
               activeOpacity={0.7}
             >
               <View style={styles.customerCareContent}>
-                <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    { backgroundColor: theme.primary },
+                  ]}
+                >
                   <Phone size={20} color={isDark ? theme.background : "#fff"} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.customerCareLabel, { color: theme.textMuted }]}>{t("profile.customerCare")}</Text>
-                  <Text style={[styles.customerCareNumber, { color: theme.text }]}>7617618567</Text>
+                  <Text
+                    style={[
+                      styles.customerCareLabel,
+                      { color: theme.textMuted },
+                    ]}
+                  >
+                    {t("profile.customerCare")}
+                  </Text>
+                  <Text
+                    style={[styles.customerCareNumber, { color: theme.text }]}
+                  >
+                    7617618567
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1445,11 +1578,19 @@ export default function ProfileScreen() {
           {isEditing ? (
             <View style={styles.rowActions}>
               <TouchableOpacity
-                style={[styles.cancelBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                style={[
+                  styles.cancelBtn,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
+                ]}
                 onPress={() => setIsEditing(false)}
               >
                 <X size={18} color={theme.text} />
-                <Text style={[styles.cancelText, { color: theme.text }]}>{t("profile.cancel")}</Text>
+                <Text style={[styles.cancelText, { color: theme.text }]}>
+                  {t("profile.cancel")}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1461,8 +1602,18 @@ export default function ProfileScreen() {
                   <ActivityIndicator color="#000" />
                 ) : (
                   <>
-                    <Save size={18} color={isDark ? theme.background : "#000"} />
-                    <Text style={[styles.saveText, { color: isDark ? theme.background : "#000" }]}>{t("profile.save")}</Text>
+                    <Save
+                      size={18}
+                      color={isDark ? theme.background : "#000"}
+                    />
+                    <Text
+                      style={[
+                        styles.saveText,
+                        { color: isDark ? theme.background : "#000" },
+                      ]}
+                    >
+                      {t("profile.save")}
+                    </Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1478,10 +1629,7 @@ export default function ProfileScreen() {
               </View>
             </View> */}
 
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={handleLogout}
-              >
+              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <Text style={styles.logoutText}>{t("profile.logout")}</Text>
               </TouchableOpacity>
             </>
@@ -1744,4 +1892,3 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 });
-

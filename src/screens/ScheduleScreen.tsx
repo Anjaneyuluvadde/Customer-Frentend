@@ -1,8 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
-import { RouteProp, useFocusEffect, useNavigation } from "@react-navigation/native";
+import {
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+} from "@react-navigation/native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,12 +26,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
 import Header from "../components/Header";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
@@ -29,8 +43,8 @@ import { useNotification } from "../hooks/useNotification";
 // import { supabase } from "../lib/supabase";
 import {
   checkPincodeServiceable as apiCheckPincodeServiceable,
-  getCustomerAddresses,
   getCustomerAddons,
+  getCustomerAddresses,
   getCustomerHubCategoryCounts,
   getCustomerHubLocations,
   getCustomerPolicies,
@@ -103,16 +117,16 @@ const formatDisplayPhone = (phone: string | undefined | null) => {
  */
 const parseTextList = (text: string): string[] => {
   const trimmed = text.trim();
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
     return trimmed
       .slice(1, -1)
       .split(/",\s*"/)
-      .map((s) => s.replace(/^"|"$/g, '').trim())
+      .map((s) => s.replace(/^"|"$/g, "").trim())
       .filter(Boolean);
   }
   return trimmed
-    .replace(/\r\n/g, '\n')
-    .split('\n')
+    .replace(/\r\n/g, "\n")
+    .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
 };
@@ -173,13 +187,17 @@ const normalizeCategory = (catStr?: string) => {
   if (!catStr) return "";
   let c = String(catStr).toUpperCase().trim().replace(/_/g, " ");
   if (c.includes("BATHROOM")) return "BATHROOM";
-  if (c.includes("KITCHEN UTENSIL") || c.includes("UTENSIL")) return "KITCHEN_UTENSIL_CLEANING";
+  if (c.includes("KITCHEN UTENSIL") || c.includes("UTENSIL"))
+    return "KITCHEN_UTENSIL_CLEANING";
   if (c.includes("KITCHEN")) return "KITCHEN";
   if (c.includes("DEEP CLEANING")) return "DEEP CLEANING";
   if (c.includes("BALCONY")) return "BALCONY CLEANING";
-  if (c.includes("CLOTHES FOLDING") || c.includes("FOLDING")) return "CLOTHES_FOLDING";
-  if (c.includes("CLOTHES IRONING") || c.includes("IRONING")) return "CLOTHES_IRONING";
-  if (c.includes("FLOOR MOPPING") || c.includes("MOPPING")) return "FLOOR_MOPPING";
+  if (c.includes("CLOTHES FOLDING") || c.includes("FOLDING"))
+    return "CLOTHES_FOLDING";
+  if (c.includes("CLOTHES IRONING") || c.includes("IRONING"))
+    return "CLOTHES_IRONING";
+  if (c.includes("FLOOR MOPPING") || c.includes("MOPPING"))
+    return "FLOOR_MOPPING";
   return c;
 };
 
@@ -254,7 +272,7 @@ const isTimeSlotValid = (
   day: number | null,
   timeString: string,
   selectedServices: SelectedService[],
-  serviceTimeRules: any[]
+  serviceTimeRules: any[],
 ) => {
   if (day === null) return false;
   if (!timeString || typeof timeString !== "string") return false;
@@ -281,20 +299,35 @@ const isTimeSlotValid = (
   if (selectedServices && selectedServices.length > 0) {
     const firstService = selectedServices[0];
     const selectedCategoryNorm = normalizeCategory(
-      firstService?.service_type || (firstService as any)?.category || firstService?.title
+      firstService?.service_type ||
+        (firstService as any)?.category ||
+        firstService?.title,
     );
-    const selectedServiceNames = selectedServices.map((s) => (s.title || "").toLowerCase().trim());
+    const selectedServiceNames = selectedServices.map((s) =>
+      (s.title || "").toLowerCase().trim(),
+    );
     const slotMinutesTotal = hours * 60 + minutes;
 
     if (serviceTimeRules && serviceTimeRules.length > 0) {
       const matchingRules = serviceTimeRules.filter((rule) => {
-        const ruleCategoryNorm = normalizeCategory(rule.service_name || rule.service || rule.category);
-        if (selectedCategoryNorm && ruleCategoryNorm && selectedCategoryNorm === ruleCategoryNorm) {
+        const ruleCategoryNorm = normalizeCategory(
+          rule.service_name || rule.service || rule.category,
+        );
+        if (
+          selectedCategoryNorm &&
+          ruleCategoryNorm &&
+          selectedCategoryNorm === ruleCategoryNorm
+        ) {
           return true;
         }
-        const ruleServiceName = String(rule.service_name || rule.service || "").toLowerCase().trim();
+        const ruleServiceName = String(rule.service_name || rule.service || "")
+          .toLowerCase()
+          .trim();
         if (!ruleServiceName) return false;
-        return selectedServiceNames.some((name) => name.includes(ruleServiceName) || ruleServiceName.includes(name));
+        return selectedServiceNames.some(
+          (name) =>
+            name.includes(ruleServiceName) || ruleServiceName.includes(name),
+        );
       });
 
       if (matchingRules.length > 0) {
@@ -306,7 +339,10 @@ const isTimeSlotValid = (
 
           const limitInMinutes = timeToMinutes(String(lbTimeRaw));
           if (limitInMinutes > 0) {
-            if (earliestLimitInMinutes === null || limitInMinutes < earliestLimitInMinutes) {
+            if (
+              earliestLimitInMinutes === null ||
+              limitInMinutes < earliestLimitInMinutes
+            ) {
               earliestLimitInMinutes = limitInMinutes;
             }
           }
@@ -328,10 +364,7 @@ const isTimeSlotValid = (
 
 const formatPrice = (value: any) => {
   if (value === null || value === undefined) return "";
-  return value
-    .toString()
-    .replace(/^₹\s*/, "")
-    .replace(/,/g, "");
+  return value.toString().replace(/^₹\s*/, "").replace(/,/g, "");
 };
 
 const displayRupee = (value: any) => {
@@ -367,8 +400,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const [selectedServices, setSelectedServices] =
     useState<SelectedService[]>(services);
 
-  const [editServices, setEditServices] =
-    useState<SelectedService[]>(services);
+  const [editServices, setEditServices] = useState<SelectedService[]>(services);
 
   useEffect(() => {
     // ❌ Removed applyClaimedOfferToSchedule that modifies service prices directly.
@@ -383,7 +415,6 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
 
-
   const [showAddService, setShowAddService] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
@@ -391,14 +422,20 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   // Addons-related state
   const [showAddonsModal, setShowAddonsModal] = useState(false);
   const addonsTouchY = useRef(0);
-  const [selectedAddonDetail, setSelectedAddonDetail] = useState<AddOn | null>(null);
+  const [selectedAddonDetail, setSelectedAddonDetail] = useState<AddOn | null>(
+    null,
+  );
   const [addons, setAddons] = useState<AddOn[]>([]);
 
   // Dynamic schedule config & capacity state from Supabase
   const [timeSlots, setTimeSlots] = useState<string[]>(DEFAULT_TIMES);
   const [timeSlotsConfig, setTimeSlotsConfig] = useState<any[]>([]);
-  const [dateTimeSlotsConfig, setDateTimeSlotsConfig] = useState<Record<string, string[]>>({});
-  const [rawDateTimeSlotsConfig, setRawDateTimeSlotsConfig] = useState<Record<string, any[]>>({});
+  const [dateTimeSlotsConfig, setDateTimeSlotsConfig] = useState<
+    Record<string, string[]>
+  >({});
+  const [rawDateTimeSlotsConfig, setRawDateTimeSlotsConfig] = useState<
+    Record<string, any[]>
+  >({});
   const [dateBookings, setDateBookings] = useState<any[]>([]);
   const [categoryStaffCount, setCategoryStaffCount] = useState<number>(1);
   const [availableYears, setAvailableYears] = useState<number[]>(DEFAULT_YEARS);
@@ -409,7 +446,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [serviceAreaContext, setServiceAreaContext] = useState<{ name: string, pincode: string } | null>(null);
+  const [loadingScheduleData, setLoadingScheduleData] = useState(true);
+  const [loadingPolicies, setLoadingPolicies] = useState(true);
+
+  const isInitialLoading =
+    loadingProfile || loadingScheduleData || loadingPolicies;
+  const [serviceAreaContext, setServiceAreaContext] = useState<{
+    name: string;
+    pincode: string;
+  } | null>(null);
   const [manualAddress, setManualAddress] = useState("");
   const [pincode, setPincode] = useState("");
   const [bookingLatitude, setBookingLatitude] = useState<number | null>(null);
@@ -421,7 +466,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   // Saved Addresses
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [loadingAddresses, setLoadingAddresses] = useState(false);
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
+    null,
+  );
 
   const fetchSavedAddresses = useCallback(async (uid: string) => {
     setLoadingAddresses(true);
@@ -449,13 +496,12 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     }
   }, [savedAddresses, selectedAddressId, manualAddress]);
 
-
   useFocusEffect(
     useCallback(() => {
       if (userId) {
         fetchSavedAddresses(userId);
       }
-    }, [userId, fetchSavedAddresses])
+    }, [userId, fetchSavedAddresses]),
   );
 
   const handleSelectAddress = (address: any) => {
@@ -500,7 +546,11 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       fetchSavedAddresses(userId);
     } catch (e) {
       console.error(e);
-      setAlertConfig({ title: "Error", message: "Could not update address", type: "error" });
+      setAlertConfig({
+        title: "Error",
+        message: "Could not update address",
+        type: "error",
+      });
       setShowAlertModal(true);
     } finally {
       setIsSavingAddress(false);
@@ -508,24 +558,24 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   };
 
   // Pincode Verification State
-  const [isPincodeServiceable, setIsPincodeServiceable] = useState<boolean>(false);
+  const [isPincodeServiceable, setIsPincodeServiceable] =
+    useState<boolean>(false);
   const [checkingPincode, setCheckingPincode] = useState<boolean>(false);
   const [isPincodeInArea, setIsPincodeInArea] = useState<boolean>(false);
-  const [isHubCapacityAvailable, setIsHubCapacityAvailable] = useState<boolean>(true);
+  const [isHubCapacityAvailable, setIsHubCapacityAvailable] =
+    useState<boolean>(true);
   const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
 
   // Policies State
   const [policies, setPolicies] = useState<Policies | null>(null);
-
-
 
   // Custom Alert Modal State
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
     message: string;
-    type: 'error' | 'info' | 'warning';
-  }>({ title: '', message: '', type: 'error' });
+    type: "error" | "info" | "warning";
+  }>({ title: "", message: "", type: "error" });
 
   // Manual Geocode Helper
   const handleManualGeocode = async (addressToGeocode: string) => {
@@ -561,22 +611,25 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       setAlertConfig({
         title: "Location Missing",
         message: "Please fetch or enter your address first.",
-        type: "warning"
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
     }
 
-    const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
+    const scheme = Platform.select({
+      ios: "maps:0,0?q=",
+      android: "geo:0,0?q=",
+    });
     const latLng = `${currentLat},${currentLng}`;
-    const label = 'Service Location';
+    const label = "Service Location";
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`
+      android: `${scheme}${latLng}(${label})`,
     });
 
     if (url) {
-      Linking.openURL(url).catch(err => {
+      Linking.openURL(url).catch((err) => {
         console.error("Failed to open map:", err);
       });
     }
@@ -587,21 +640,26 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   // Load Profile from FastAPI
   const loadProfile = useCallback(async () => {
     try {
-      const { profile: profileData, resolved_user_id } = await getCustomerProfile();
+      const { profile: profileData, resolved_user_id } =
+        await getCustomerProfile();
 
       if (profileData) {
         setUserId(resolved_user_id || profileData.id);
 
         const cleanedProfile = {
           ...profileData,
-          phone: formatDisplayPhone(profileData.phone)
+          phone: formatDisplayPhone(profileData.phone),
         };
         setProfile(cleanedProfile);
 
-        const selectedServiceArea = await LocationService.getSelectedServiceArea();
+        const selectedServiceArea =
+          await LocationService.getSelectedServiceArea();
 
         if (selectedServiceArea && selectedServiceArea.isServiceable) {
-          setServiceAreaContext({ name: selectedServiceArea.name, pincode: selectedServiceArea.pincode });
+          setServiceAreaContext({
+            name: selectedServiceArea.name,
+            pincode: selectedServiceArea.pincode,
+          });
         } else {
           setServiceAreaContext(null);
         }
@@ -635,7 +693,16 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
   useEffect(() => {
     loadProfile();
-    fetchPolicies();
+
+    const loadInitialPolicies = async () => {
+      try {
+        await fetchPolicies();
+      } finally {
+        setLoadingPolicies(false);
+      }
+    };
+
+    loadInitialPolicies();
   }, [loadProfile, fetchPolicies]);
 
   useFocusEffect(
@@ -643,19 +710,21 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       Location.requestForegroundPermissionsAsync().catch((err) => {
         console.log("Location permission pre-request failed:", err);
       });
-      return () => { };
-    }, [])
+      return () => {};
+    }, []),
   );
 
   // --- NEW VALIDATION FUNCTION ---
   const validateUserDetails = () => {
-    const isPhoneValid = profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
+    const isPhoneValid =
+      profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
 
     if (!profile?.full_name?.trim() || !isPhoneValid) {
       setAlertConfig({
         title: "Required Fields",
-        message: "Please enter your Name and a valid 10-digit Phone Number before selecting an address.",
-        type: "warning"
+        message:
+          "Please enter your Name and a valid 10-digit Phone Number before selecting an address.",
+        type: "warning",
       });
       setShowAlertModal(true);
       return false;
@@ -666,8 +735,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   const validateBeforeScheduling = (action: string) => {
     const missing: string[] = [];
     if (!profile?.full_name?.trim()) missing.push("Name");
-    
-    const isPhoneValid = profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
+
+    const isPhoneValid =
+      profile?.phone && profile.phone.replace(/\D/g, "").length === 10;
     if (!profile?.phone?.trim() || !isPhoneValid) {
       missing.push("Valid 10-digit Phone Number");
     }
@@ -680,7 +750,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       setAlertConfig({
         title: "Required Fields Missing",
         message: `Please provide the following details before ${action}:\n\n• ${missing.join("\n• ")}`,
-        type: "warning"
+        type: "warning",
       });
       setShowAlertModal(true);
       return false;
@@ -697,9 +767,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
     if (status !== "granted") {
       setAlertConfig({
-        title: 'Permission Denied',
-        message: 'Location access is required to use this feature',
-        type: 'warning'
+        title: "Permission Denied",
+        message: "Location access is required to use this feature",
+        type: "warning",
       });
       setShowAlertModal(true);
       return;
@@ -717,7 +787,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       setBookingLongitude(longitude);
 
       try {
-        const addressList = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const addressList = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
 
         if (addressList[0]) {
           const addr: any = addressList[0];
@@ -726,7 +799,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           let finalPincode = addr.postalCode || "";
 
           if (fullAddr) {
-            const parts = fullAddr.split(",").map((p: string) => p.trim()).filter((p: string) => p);
+            const parts = fullAddr
+              .split(",")
+              .map((p: string) => p.trim())
+              .filter((p: string) => p);
             let pinIdx = -1;
             for (let i = parts.length - 1; i >= 0; i--) {
               const pinMatch = parts[i].match(/\b(\d{6})\b/);
@@ -737,7 +813,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             }
           } else {
             // Android often returns null for formattedAddress, build a fallback
-            const fallbackParts = [addr.name, addr.street, addr.district, addr.city, addr.subregion, addr.region, addr.country];
+            const fallbackParts = [
+              addr.name,
+              addr.street,
+              addr.district,
+              addr.city,
+              addr.subregion,
+              addr.region,
+              addr.country,
+            ];
             finalAddress = fallbackParts.filter(Boolean).join(", ");
           }
 
@@ -753,9 +837,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
     } catch (err) {
       console.error("Location fetch error:", err);
       setAlertConfig({
-        title: 'Location Error',
-        message: 'Could not fetch your location. Please try again or enter manually.',
-        type: 'error'
+        title: "Location Error",
+        message:
+          "Could not fetch your location. Please try again or enter manually.",
+        type: "error",
       });
       setShowAlertModal(true);
     } finally {
@@ -798,7 +883,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
     if (configData) {
       configData.forEach((row: { config_key: string; config_value: any }) => {
-        if (row.config_key === "time_slots" && Array.isArray(row.config_value)) {
+        if (
+          row.config_key === "time_slots" &&
+          Array.isArray(row.config_value)
+        ) {
           setTimeSlotsConfig(row.config_value);
           const normalized = row.config_value
             .map((slot: any) => {
@@ -812,7 +900,11 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             .filter(Boolean) as string[];
           setTimeSlots(normalized);
         }
-        if (row.config_key === "date_time_slots" && typeof row.config_value === "object" && row.config_value !== null) {
+        if (
+          row.config_key === "date_time_slots" &&
+          typeof row.config_value === "object" &&
+          row.config_value !== null
+        ) {
           const rawObj = row.config_value as Record<string, any[]>;
           setRawDateTimeSlotsConfig(rawObj);
           const normalizedObj: Record<string, string[]> = {};
@@ -837,7 +929,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         if (row.config_key === "years" && Array.isArray(row.config_value)) {
           const normalizedYears = row.config_value
             .map((y: any) => {
-              if (typeof y === "number" || typeof y === "string") return Number(y);
+              if (typeof y === "number" || typeof y === "string")
+                return Number(y);
               if (y && typeof y === "object" && y.value !== undefined) {
                 if (y.active === false) return null;
                 return Number(y.value);
@@ -850,15 +943,26 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             setAvailableYears(normalizedYears);
           }
         }
-        const key = (row as any).config_key || (row as any).config_keys || (row as any).config_id;
+        const key =
+          (row as any).config_key ||
+          (row as any).config_keys ||
+          (row as any).config_id;
         if (key === "service_time_rules") {
           let rules = [];
           if (typeof row.config_value === "string") {
-            try { rules = JSON.parse(row.config_value); } catch (e) { rules = []; }
+            try {
+              rules = JSON.parse(row.config_value);
+            } catch (e) {
+              rules = [];
+            }
           } else {
             rules = row.config_value;
           }
-          const finalRules = Array.isArray(rules) ? rules : (rules ? [rules] : []);
+          const finalRules = Array.isArray(rules)
+            ? rules
+            : rules
+              ? [rules]
+              : [];
           setServiceTimeRules(finalRules);
         }
       });
@@ -866,7 +970,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   }, []);
 
   useEffect(() => {
-    fetchData();
+    const loadInitialScheduleData = async () => {
+      try {
+        await fetchData();
+      } catch (error) {
+        console.error("Error loading schedule data:", error);
+      } finally {
+        setLoadingScheduleData(false);
+      }
+    };
+
+    loadInitialScheduleData();
   }, [fetchData]);
 
   const onRefresh = async () => {
@@ -876,123 +990,156 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   };
 
   /* ================= HUB LOCATION & STAFF CAPACITY RESOLUTION ================= */
-  const resolveHubFromLocation = useCallback(async (pinStr: string, addressStr: string = "") => {
-    const cleanPin = String(pinStr || "").replace(/\D/g, "").slice(0, 6);
+  const resolveHubFromLocation = useCallback(
+    async (pinStr: string, addressStr: string = "") => {
+      const cleanPin = String(pinStr || "")
+        .replace(/\D/g, "")
+        .slice(0, 6);
 
-    // 1. Match by pincode in hub_locations via customer API
-    if (cleanPin.length === 6) {
-      try {
-        const pinCheck = await apiCheckPincodeServiceable(cleanPin);
-        if (pinCheck && pinCheck.serviceable && pinCheck.hub) {
-          const hubName = pinCheck.hub.hub_name || pinCheck.hub.name;
-          const locations = pinCheck.locations || [];
-          if (addressStr && locations.length > 0) {
-            const addrUpper = addressStr.toUpperCase();
-            const specificMatch = locations.find((hl: any) => {
+      // 1. Match by pincode in hub_locations via customer API
+      if (cleanPin.length === 6) {
+        try {
+          const pinCheck = await apiCheckPincodeServiceable(cleanPin);
+          if (pinCheck && pinCheck.serviceable && pinCheck.hub) {
+            const hubName = pinCheck.hub.hub_name || pinCheck.hub.name;
+            const locations = pinCheck.locations || [];
+            if (addressStr && locations.length > 0) {
+              const addrUpper = addressStr.toUpperCase();
+              const specificMatch = locations.find((hl: any) => {
+                const locName = (hl.location_name || "").toUpperCase().trim();
+                return locName && addrUpper.includes(locName);
+              });
+              if (specificMatch) {
+                return { hubName, isActive: specificMatch.is_active !== false };
+              }
+            }
+            return { hubName, isActive: true };
+          }
+        } catch (err) {
+          console.error(
+            "[CUSTOMER FASTAPI] Error checking pincode serviceability:",
+            err,
+          );
+        }
+      }
+
+      // 2. Fallback: Match by location_name or address substring in all hub_locations
+      if (addressStr) {
+        try {
+          const addrUpper = addressStr.toUpperCase();
+          const allHubLocs = await getCustomerHubLocations();
+
+          if (allHubLocs && allHubLocs.length > 0) {
+            const match = allHubLocs.find((hl: any) => {
               const locName = (hl.location_name || "").toUpperCase().trim();
               return locName && addrUpper.includes(locName);
             });
-            if (specificMatch) {
-              return { hubName, isActive: specificMatch.is_active !== false };
+
+            if (match) {
+              return {
+                hubName: match.hub_name,
+                isActive: match.is_active !== false,
+              };
             }
           }
-          return { hubName, isActive: true };
-        }
-      } catch (err) {
-        console.error("[CUSTOMER FASTAPI] Error checking pincode serviceability:", err);
-      }
-    }
-
-    // 2. Fallback: Match by location_name or address substring in all hub_locations
-    if (addressStr) {
-      try {
-        const addrUpper = addressStr.toUpperCase();
-        const allHubLocs = await getCustomerHubLocations();
-
-        if (allHubLocs && allHubLocs.length > 0) {
-          const match = allHubLocs.find((hl: any) => {
-            const locName = (hl.location_name || "").toUpperCase().trim();
-            return locName && addrUpper.includes(locName);
-          });
-
-          if (match) {
-            return { hubName: match.hub_name, isActive: match.is_active !== false };
-          }
-        }
-      } catch (err) {
-        console.error("[CUSTOMER FASTAPI] Error fetching all hub locations:", err);
-      }
-    }
-
-    return { hubName: null, isActive: false };
-  }, []);
-
-  const fetchHubCategoryStaffCount = useCallback(async (hubName: string, servicesList: any[]) => {
-    if (!hubName || !servicesList || servicesList.length === 0) return 0;
-
-    const firstService = servicesList[0];
-    let rawType = (firstService?.service_type || (firstService as any)?.category || firstService?.title || "").toUpperCase().trim();
-
-    if (!rawType && firstService?.id) {
-      const sRow = allServices.find((s: any) => s.id === firstService.id);
-      if (sRow) {
-        rawType = (sRow.service_type || (sRow as any).category || "").toUpperCase().trim();
-      }
-    }
-
-    if (!rawType) return 0;
-
-    const normalizedTarget = normalizeCategory(rawType);
-    const spaceType = rawType.replace(/_/g, " ").trim();
-    const underscoreType = rawType.replace(/\s+/g, "_").trim();
-
-    let mappedSpaceType = spaceType;
-    if (mappedSpaceType === "KITCHEN CLEANING") mappedSpaceType = "KITCHEN";
-    if (mappedSpaceType === "FULL HOME DEEP CLEANING") mappedSpaceType = "DEEP CLEANING";
-
-    try {
-      const rows = await getCustomerHubCategoryCounts(hubName.trim());
-
-      if (!rows || rows.length === 0) return 0;
-
-      // Step 1: Canonical normalized category match (Strict exact category token match)
-      let match = rows.find((r: any) => {
-        const catNorm = normalizeCategory(r.category);
-        return catNorm === normalizedTarget;
-      });
-
-      // Step 2: Strict raw string equality as secondary check
-      if (!match) {
-        match = rows.find((r: any) => {
-          const cat = (r.category || "").toUpperCase().trim();
-          return (
-            cat === rawType ||
-            cat === spaceType ||
-            cat === underscoreType ||
-            cat === mappedSpaceType
+        } catch (err) {
+          console.error(
+            "[CUSTOMER FASTAPI] Error fetching all hub locations:",
+            err,
           );
-        });
+        }
       }
 
-      // Step 3: Strict word boundary fallback match (never matching substrings like KITCHEN inside KITCHEN_UTENSIL_CLEANING)
-      if (!match) {
-        match = rows.find((r: any) => {
-          const cat = (r.category || "").toUpperCase().trim();
-          const regex = new RegExp(`\\b${rawType.replace(/[^A-Z0-9]/g, "")}\\b`, "i");
-          const cleanCat = cat.replace(/[^A-Z0-9]/g, "");
-          return regex.test(cleanCat) && cleanCat === rawType.replace(/[^A-Z0-9]/g, "");
-        });
+      return { hubName: null, isActive: false };
+    },
+    [],
+  );
+
+  const fetchHubCategoryStaffCount = useCallback(
+    async (hubName: string, servicesList: any[]) => {
+      if (!hubName || !servicesList || servicesList.length === 0) return 0;
+
+      const firstService = servicesList[0];
+      let rawType = (
+        firstService?.service_type ||
+        (firstService as any)?.category ||
+        firstService?.title ||
+        ""
+      )
+        .toUpperCase()
+        .trim();
+
+      if (!rawType && firstService?.id) {
+        const sRow = allServices.find((s: any) => s.id === firstService.id);
+        if (sRow) {
+          rawType = (sRow.service_type || (sRow as any).category || "")
+            .toUpperCase()
+            .trim();
+        }
       }
 
-      if (match && match.count !== null && match.count !== undefined) {
-        return Number(match.count);
+      if (!rawType) return 0;
+
+      const normalizedTarget = normalizeCategory(rawType);
+      const spaceType = rawType.replace(/_/g, " ").trim();
+      const underscoreType = rawType.replace(/\s+/g, "_").trim();
+
+      let mappedSpaceType = spaceType;
+      if (mappedSpaceType === "KITCHEN CLEANING") mappedSpaceType = "KITCHEN";
+      if (mappedSpaceType === "FULL HOME DEEP CLEANING")
+        mappedSpaceType = "DEEP CLEANING";
+
+      try {
+        const rows = await getCustomerHubCategoryCounts(hubName.trim());
+
+        if (!rows || rows.length === 0) return 0;
+
+        // Step 1: Canonical normalized category match (Strict exact category token match)
+        let match = rows.find((r: any) => {
+          const catNorm = normalizeCategory(r.category);
+          return catNorm === normalizedTarget;
+        });
+
+        // Step 2: Strict raw string equality as secondary check
+        if (!match) {
+          match = rows.find((r: any) => {
+            const cat = (r.category || "").toUpperCase().trim();
+            return (
+              cat === rawType ||
+              cat === spaceType ||
+              cat === underscoreType ||
+              cat === mappedSpaceType
+            );
+          });
+        }
+
+        // Step 3: Strict word boundary fallback match (never matching substrings like KITCHEN inside KITCHEN_UTENSIL_CLEANING)
+        if (!match) {
+          match = rows.find((r: any) => {
+            const cat = (r.category || "").toUpperCase().trim();
+            const regex = new RegExp(
+              `\\b${rawType.replace(/[^A-Z0-9]/g, "")}\\b`,
+              "i",
+            );
+            const cleanCat = cat.replace(/[^A-Z0-9]/g, "");
+            return (
+              regex.test(cleanCat) &&
+              cleanCat === rawType.replace(/[^A-Z0-9]/g, "")
+            );
+          });
+        }
+
+        if (match && match.count !== null && match.count !== undefined) {
+          return Number(match.count);
+        }
+        return 0;
+      } catch (e) {
+        console.error("Error fetching hub category staff count:", e);
+        return 0;
       }
-      return 0;
-    } catch (e) {
-      console.error("Error fetching hub category staff count:", e);
-      return 0;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Reset selectedTime when date, month, or year changes
   useEffect(() => {
@@ -1036,68 +1183,88 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
   const checkRequestId = useRef(0);
 
-  const checkPincodeServiceable = useCallback(async (pin: string, addressStr: string = "") => {
-    console.log(`[Serviceability] Pincode received: ${pin}, Address: ${addressStr}`);
-    const cleanedPin = String(pin || "").trim().slice(0, 6);
+  const checkPincodeServiceable = useCallback(
+    async (pin: string, addressStr: string = "") => {
+      console.log(
+        `[Serviceability] Pincode received: ${pin}, Address: ${addressStr}`,
+      );
+      const cleanedPin = String(pin || "")
+        .trim()
+        .slice(0, 6);
 
-    checkRequestId.current += 1;
-    const currentRequestId = checkRequestId.current;
+      checkRequestId.current += 1;
+      const currentRequestId = checkRequestId.current;
 
-    if (cleanedPin.length !== 6) {
-      setIsPincodeServiceable(false);
-      setIsPincodeInArea(false);
-      setIsHubCapacityAvailable(true);
-      return;
-    }
-
-    try {
-      setCheckingPincode(true);
-
-      const { hubName, isActive } = await resolveHubFromLocation(cleanedPin, addressStr);
-      if (currentRequestId !== checkRequestId.current) return;
-
-      console.log(`[Serviceability] Resolved hub: ${hubName}, Active: ${isActive}`);
-      setSelectedHubName(hubName || "");
-
-      if (!hubName || !isActive) {
-        console.log(`[Serviceability] Final result: NOT_AVAILABLE (No active hub)`);
+      if (cleanedPin.length !== 6) {
         setIsPincodeServiceable(false);
         setIsPincodeInArea(false);
-        setIsHubCapacityAvailable(false);
-        setCategoryStaffCount(0);
+        setIsHubCapacityAvailable(true);
         return;
       }
 
-      setIsPincodeInArea(true);
+      try {
+        setCheckingPincode(true);
 
-      const staffCount = await fetchHubCategoryStaffCount(hubName, selectedServices);
-      if (currentRequestId !== checkRequestId.current) return;
+        const { hubName, isActive } = await resolveHubFromLocation(
+          cleanedPin,
+          addressStr,
+        );
+        if (currentRequestId !== checkRequestId.current) return;
 
-      console.log(`[Serviceability] Staff count: ${staffCount} for hub ${hubName}`);
-      setCategoryStaffCount(staffCount);
+        console.log(
+          `[Serviceability] Resolved hub: ${hubName}, Active: ${isActive}`,
+        );
+        setSelectedHubName(hubName || "");
 
-      if (staffCount > 0) {
-        setIsPincodeServiceable(true);
-        setIsHubCapacityAvailable(true);
-        console.log(`[Serviceability] Final result: AVAILABLE`);
-      } else {
+        if (!hubName || !isActive) {
+          console.log(
+            `[Serviceability] Final result: NOT_AVAILABLE (No active hub)`,
+          );
+          setIsPincodeServiceable(false);
+          setIsPincodeInArea(false);
+          setIsHubCapacityAvailable(false);
+          setCategoryStaffCount(0);
+          return;
+        }
+
+        setIsPincodeInArea(true);
+
+        const staffCount = await fetchHubCategoryStaffCount(
+          hubName,
+          selectedServices,
+        );
+        if (currentRequestId !== checkRequestId.current) return;
+
+        console.log(
+          `[Serviceability] Staff count: ${staffCount} for hub ${hubName}`,
+        );
+        setCategoryStaffCount(staffCount);
+
+        if (staffCount > 0) {
+          setIsPincodeServiceable(true);
+          setIsHubCapacityAvailable(true);
+          console.log(`[Serviceability] Final result: AVAILABLE`);
+        } else {
+          setIsPincodeServiceable(false);
+          setIsHubCapacityAvailable(false);
+          console.log(
+            `[Serviceability] Final result: NOT_AVAILABLE (No staff)`,
+          );
+        }
+      } catch (err: any) {
+        if (currentRequestId !== checkRequestId.current) return;
+        console.error(`[Serviceability] Error:`, err);
         setIsPincodeServiceable(false);
+        setIsPincodeInArea(false);
         setIsHubCapacityAvailable(false);
-        console.log(`[Serviceability] Final result: NOT_AVAILABLE (No staff)`);
+      } finally {
+        if (currentRequestId === checkRequestId.current) {
+          setCheckingPincode(false);
+        }
       }
-
-    } catch (err: any) {
-      if (currentRequestId !== checkRequestId.current) return;
-      console.error(`[Serviceability] Error:`, err);
-      setIsPincodeServiceable(false);
-      setIsPincodeInArea(false);
-      setIsHubCapacityAvailable(false);
-    } finally {
-      if (currentRequestId === checkRequestId.current) {
-        setCheckingPincode(false);
-      }
-    }
-  }, [resolveHubFromLocation, fetchHubCategoryStaffCount, selectedServices]);
+    },
+    [resolveHubFromLocation, fetchHubCategoryStaffCount, selectedServices],
+  );
 
   useEffect(() => {
     checkPincodeServiceable(pincode, manualAddress);
@@ -1119,11 +1286,13 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       const config = timeSlotsConfig.find(
         (slot) =>
           (typeof slot === "string" && slot === timeStr) ||
-          (typeof slot === "object" && slot && slot.value === timeStr)
+          (typeof slot === "object" && slot && slot.value === timeStr),
       );
-      return Boolean(config && typeof config === "object" && config.active === false);
+      return Boolean(
+        config && typeof config === "object" && config.active === false,
+      );
     },
-    [timeSlotsConfig]
+    [timeSlotsConfig],
   );
 
   /* ================= CAPACITY & TIME SLOT AVAILABILITY CHECK ================= */
@@ -1134,7 +1303,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
       const firstService = selectedServices[0];
       const selectedCategoryNorm = normalizeCategory(
-        firstService?.service_type || (firstService as any)?.category || firstService?.title
+        firstService?.service_type ||
+          (firstService as any)?.category ||
+          firstService?.title,
       );
 
       const candidateStart = timeToMinutes(timeStr);
@@ -1146,10 +1317,16 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         let bServices: any[] = [];
         if (b.services) {
           try {
-            bServices = typeof b.services === "string" ? JSON.parse(b.services) : b.services;
-          } catch (e) { }
+            bServices =
+              typeof b.services === "string"
+                ? JSON.parse(b.services)
+                : b.services;
+          } catch (e) {}
         }
-        const bFirst = Array.isArray(bServices) && bServices.length > 0 ? bServices[0] : null;
+        const bFirst =
+          Array.isArray(bServices) && bServices.length > 0
+            ? bServices[0]
+            : null;
         const rawCat =
           bFirst?.service_type ||
           bFirst?.category ||
@@ -1178,17 +1355,25 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
       // 2. Build time intervals for existing category bookings [bStart, bEnd)
       const bookedWindows = categoryBookings.map((b) => {
-        let bDur = parseDurationToMinutes(b.total_duration || b.service_duration);
+        let bDur = parseDurationToMinutes(
+          b.total_duration || b.service_duration,
+        );
         if (!bDur && b.services) {
           try {
-            const parsed = typeof b.services === "string" ? JSON.parse(b.services) : b.services;
+            const parsed =
+              typeof b.services === "string"
+                ? JSON.parse(b.services)
+                : b.services;
             if (Array.isArray(parsed) && parsed.length > 0) {
               bDur = parsed.reduce(
-                (acc: number, s: any) => acc + (parseDurationToMinutes(s.duration) || 45) * (s.quantity || 1),
-                0
+                (acc: number, s: any) =>
+                  acc +
+                  (parseDurationToMinutes(s.duration) || 45) *
+                    (s.quantity || 1),
+                0,
               );
             }
-          } catch (e) { }
+          } catch (e) {}
         }
         bDur = bDur || 45;
 
@@ -1212,7 +1397,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
       return false; // Slot is ENABLED
     },
-    [dateBookings, categoryStaffCount, totalDurationMinutes, selectedServices]
+    [dateBookings, categoryStaffCount, totalDurationMinutes, selectedServices],
   );
 
   // Compute available time slots (all times default + custom sorted)
@@ -1240,7 +1425,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       if (hasCustomTimes) {
         const customTimesForDate = rawDateTimeSlotsConfig[dateString] || [];
         const activeCustomTimes = customTimesForDate
-          .filter((slot: any) => slot && (typeof slot === "string" || slot.active !== false))
+          .filter(
+            (slot: any) =>
+              slot && (typeof slot === "string" || slot.active !== false),
+          )
           .map((slot: any) => (typeof slot === "string" ? slot : slot.value))
           .filter(Boolean);
 
@@ -1255,7 +1443,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         selectedDate,
         timeStr,
         selectedServices,
-        serviceTimeRules
+        serviceTimeRules,
       );
 
       const isCapacityDisabled = isSlotDisabledByCapacity(timeStr);
@@ -1271,24 +1459,24 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       selectedServices,
       serviceTimeRules,
       isSlotDisabledByCapacity,
-    ]
+    ],
   );
 
   // ✅ Filter addons to match the main service's service_type (case-insensitive)
   const filteredAddons = useMemo(() => {
     // Try to get service_type directly from the selected service first
-    let mainServiceType = editServices[0]?.service_type?.toUpperCase() || '';
+    let mainServiceType = editServices[0]?.service_type?.toUpperCase() || "";
 
     // Fallback to searching in allServices if type is missing
     if (!mainServiceType && editServices[0]?.id) {
       const mainService = allServices.find((s) => s.id === editServices[0].id);
-      mainServiceType = mainService?.service_type?.toUpperCase() || '';
+      mainServiceType = mainService?.service_type?.toUpperCase() || "";
     }
 
     if (!mainServiceType) return [];
 
     return addons.filter(
-      (addon) => addon.service_type?.toUpperCase() === mainServiceType
+      (addon) => addon.service_type?.toUpperCase() === mainServiceType,
     );
   }, [addons, allServices, editServices]);
 
@@ -1307,10 +1495,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
       setEditServices((prev) =>
         prev.map((s) =>
-          s.id === addon.id
-            ? { ...s, quantity: (s.quantity || 1) + 1 }
-            : s
-        )
+          s.id === addon.id ? { ...s, quantity: (s.quantity || 1) + 1 } : s,
+        ),
       );
     } else {
       // Add new addon with quantity 1
@@ -1342,10 +1528,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       // Decrement quantity
       setEditServices((prev) =>
         prev.map((s) =>
-          s.id === addonId
-            ? { ...s, quantity: (s.quantity || 1) - 1 }
-            : s
-        )
+          s.id === addonId ? { ...s, quantity: (s.quantity || 1) - 1 } : s,
+        ),
       );
     }
   };
@@ -1439,8 +1623,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
   /* ================= UI ================= */
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      edges={["top"]}
+    >
       <Header />
+
+      <LoadingOverlay
+        visible={isInitialLoading}
+        message="Loading your details..."
+      />
+
       <ScrollView
         contentContainerStyle={[styles.container, bottomNavPadding]}
         refreshControl={
@@ -1455,25 +1648,60 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       >
         {/* SERVICE DETAILS */}
         <View style={styles.headerRow}>
-          <Text style={[styles.section, { color: theme.text, marginTop: 0 }]}>{t("schedule.serviceDetails")}</Text>
+          <Text style={[styles.section, { color: theme.text, marginTop: 0 }]}>
+            {t("schedule.serviceDetails")}
+          </Text>
         </View>
 
         {selectedServices.map((s: SelectedService) => (
-          <View key={s.id} style={[styles.serviceCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <View
+            key={s.id}
+            style={[
+              styles.serviceCard,
+              { backgroundColor: theme.background, borderColor: theme.border },
+            ]}
+          >
             <Text style={[styles.bold, { color: theme.text }]}>
               {s.title}
               {s.quantity && s.quantity > 1 ? ` (x${s.quantity})` : ""}
             </Text>
 
             {/* ✅ Pricing Display - Calculate total based on quantity */}
-            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: theme.text }}>
-                ₹{(parseFloat(s.price.replace(/[^\d]/g, "")) * (s.quantity || 1)).toLocaleString("en-IN")}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 6,
+                marginTop: 4,
+              }}
+            >
+              <Text
+                style={{ fontSize: 15, fontWeight: "600", color: theme.text }}
+              >
+                ₹
+                {(
+                  parseFloat(s.price.replace(/[^\d]/g, "")) * (s.quantity || 1)
+                ).toLocaleString("en-IN")}
               </Text>
 
-              {(s.discount_label || (s.discount_percent && Number(s.discount_percent) > 0)) ? (
-                <View style={{ backgroundColor: "#E9F7EF", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ color: "#1E7E34", fontWeight: "700", fontSize: 10 }}>
+              {s.discount_label ||
+              (s.discount_percent && Number(s.discount_percent) > 0) ? (
+                <View
+                  style={{
+                    backgroundColor: "#E9F7EF",
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#1E7E34",
+                      fontWeight: "700",
+                      fontSize: 10,
+                    }}
+                  >
                     {s.discount_label || `${s.discount_percent}% off`}
                   </Text>
                 </View>
@@ -1485,35 +1713,74 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 ? `${selectedDayName}, ${selectedDate} ${MONTHS[month]} ${year} at ${selectedTime}`
                 : ""}
             </Text>
-            <Text style={[styles.meta, { color: theme.textLight }]}>{s.duration}</Text>
+            <Text style={[styles.meta, { color: theme.textLight }]}>
+              {s.duration}
+            </Text>
           </View>
         ))}
 
         {/* SERVICE ADDRESS */}
-        <Text style={[styles.sectionHeading, { color: theme.text, marginTop: 24, marginBottom: 12 }]}>{t("checkout.serviceAddress")}</Text>
+        <Text
+          style={[
+            styles.sectionHeading,
+            { color: theme.text, marginTop: 24, marginBottom: 12 },
+          ]}
+        >
+          {t("checkout.serviceAddress")}
+        </Text>
 
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
           {/* User Details */}
           <View style={{ marginBottom: 12 }}>
-            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.name")} *</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t("checkout.name")} *
+            </Text>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.surfaceVariant,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+              ]}
               value={profile?.full_name || ""}
               placeholderTextColor={theme.textLight}
               placeholder="Enter your name"
               onChangeText={(text) =>
-                setProfile((prev) => (prev ? { ...prev, full_name: text } : { full_name: text, phone: "" }))
+                setProfile((prev) =>
+                  prev
+                    ? { ...prev, full_name: text }
+                    : { full_name: text, phone: "" },
+                )
               }
             />
 
-            <Text style={[styles.label, { color: theme.text }]}>{t("checkout.phone")} *</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t("checkout.phone")} *
+            </Text>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.surfaceVariant,
+                  borderColor: theme.border,
+                  color: theme.text,
+                },
+              ]}
               value={profile?.phone || ""}
               onChangeText={(text) => {
                 const onlyDigits = text.replace(/\D/g, "");
-                setProfile((prev) => (prev ? { ...prev, phone: onlyDigits } : { full_name: "", phone: onlyDigits }));
+                setProfile((prev) =>
+                  prev
+                    ? { ...prev, phone: onlyDigits }
+                    : { full_name: "", phone: onlyDigits },
+                );
               }}
               keyboardType="phone-pad"
               maxLength={10}
@@ -1523,79 +1790,241 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           </View>
           {/* Address Inputs */}
           <View style={{ marginTop: 8 }}>
-            <View style={[styles.addressSection, { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 0, padding: 0 }]}>
+            <View
+              style={[
+                styles.addressSection,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                  borderWidth: 0,
+                  padding: 0,
+                },
+              ]}
+            >
               {/* ✅ SELECTED SERVICE AREA CONTEXT (IF ANY) */}
               {serviceAreaContext && (
                 <View style={{ paddingBottom: 16 }}>
-                  <Text style={{ fontSize: 12, color: theme.textLight, marginBottom: 4 }}>Selected Service Location:</Text>
-                  <Text style={{ fontSize: 16, color: theme.text, fontWeight: '600' }}>{serviceAreaContext.name} • {serviceAreaContext.pincode}</Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: theme.textLight,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Selected Service Location:
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: theme.text,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {serviceAreaContext.name} • {serviceAreaContext.pincode}
+                  </Text>
                 </View>
               )}
 
-              <Text style={{ fontSize: 14, color: theme.textLight, marginBottom: 12 }}>Select an address for this service</Text>
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: theme.textLight,
+                  marginBottom: 12,
+                }}
+              >
+                Select an address for this service
+              </Text>
 
               {/* SAVED ADDRESSES */}
               {loadingAddresses ? (
-                <View style={{ padding: 20, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+                <View
+                  style={{
+                    padding: 20,
+                    alignItems: "center",
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    gap: 10,
+                  }}
+                >
                   <ActivityIndicator size="small" color={theme.primary} />
-                  <Text style={{ color: theme.textLight }}>Loading saved addresses...</Text>
+                  <Text style={{ color: theme.textLight }}>
+                    Loading saved addresses...
+                  </Text>
                 </View>
               ) : (
                 <>
                   {savedAddresses.length === 0 ? (
-                    <View style={{ paddingVertical: 24, alignItems: 'center', backgroundColor: theme.surfaceVariant, borderRadius: 12 }}>
-                      <Text style={{ color: theme.textLight, fontSize: 16, marginBottom: 8 }}>No saved addresses yet.</Text>
-                      <Text style={{ color: theme.textLight, fontSize: 14, marginBottom: 16 }}>Add your service address to continue.</Text>
+                    <View
+                      style={{
+                        paddingVertical: 24,
+                        alignItems: "center",
+                        backgroundColor: theme.surfaceVariant,
+                        borderRadius: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: theme.textLight,
+                          fontSize: 16,
+                          marginBottom: 8,
+                        }}
+                      >
+                        No saved addresses yet.
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.textLight,
+                          fontSize: 14,
+                          marginBottom: 16,
+                        }}
+                      >
+                        Add your service address to continue.
+                      </Text>
                       <Pressable
-                        style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: theme.primary }}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          paddingVertical: 10,
+                          paddingHorizontal: 16,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: theme.primary,
+                        }}
                         onPress={() => {
-                          if (validateUserDetails()) navigation.navigate("LocationSearch");
+                          if (validateUserDetails())
+                            navigation.navigate("LocationSearch");
                         }}
                       >
                         <Ionicons name="add" size={20} color={theme.primary} />
-                        <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>Add New Address</Text>
+                        <Text
+                          style={{
+                            color: theme.primary,
+                            fontWeight: "600",
+                            fontSize: 14,
+                          }}
+                        >
+                          Add New Address
+                        </Text>
                       </Pressable>
                     </View>
                   ) : (
-                    savedAddresses.map(addr => (
+                    savedAddresses.map((addr) => (
                       <Pressable
                         key={addr.id}
-                        style={[styles.summaryCard, {
-                          backgroundColor: selectedAddressId === addr.id ? (isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4') : theme.surfaceVariant,
-                          marginBottom: 12,
-                          borderWidth: 2,
-                          borderColor: selectedAddressId === addr.id ? theme.primary : 'transparent',
-                          borderRadius: 12,
-                          padding: 16
-                        }]}
+                        style={[
+                          styles.summaryCard,
+                          {
+                            backgroundColor:
+                              selectedAddressId === addr.id
+                                ? isDark
+                                  ? "rgba(22, 163, 74, 0.15)"
+                                  : "#F0FDF4"
+                                : theme.surfaceVariant,
+                            marginBottom: 12,
+                            borderWidth: 2,
+                            borderColor:
+                              selectedAddressId === addr.id
+                                ? theme.primary
+                                : "transparent",
+                            borderRadius: 12,
+                            padding: 16,
+                          },
+                        ]}
                         onPress={() => handleSelectAddress(addr)}
                       >
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                          }}
+                        >
                           <View style={{ flex: 1, paddingRight: 12 }}>
-                            <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}>
+                            <Text
+                              style={{
+                                color: theme.text,
+                                fontWeight: "700",
+                                fontSize: 16,
+                              }}
+                            >
                               {addr.tag || "Address"}
                             </Text>
-                            <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, lineHeight: 20 }}>
+                            <Text
+                              style={{
+                                color: theme.text,
+                                marginTop: 6,
+                                fontSize: 14,
+                                lineHeight: 20,
+                              }}
+                            >
                               {addr.full_address}
                             </Text>
                             {addr.pincode ? (
-                              <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, fontWeight: '500' }}>
+                              <Text
+                                style={{
+                                  color: theme.text,
+                                  marginTop: 6,
+                                  fontSize: 14,
+                                  fontWeight: "500",
+                                }}
+                              >
                                 Pincode: {addr.pincode}
                               </Text>
                             ) : null}
                           </View>
 
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 12,
+                            }}
+                          >
                             <Pressable
-                              onPress={(e) => { e.stopPropagation(); openEditAddress(addr); }}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                openEditAddress(addr);
+                              }}
                               style={{ padding: 4 }}
-                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              hitSlop={{
+                                top: 10,
+                                bottom: 10,
+                                left: 10,
+                                right: 10,
+                              }}
                             >
-                              <Ionicons name="create-outline" size={20} color={theme.textLight} />
+                              <Ionicons
+                                name="create-outline"
+                                size={20}
+                                color={theme.textLight}
+                              />
                             </Pressable>
 
-                            <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: selectedAddressId === addr.id ? theme.primary : theme.border, alignItems: 'center', justifyContent: 'center' }}>
-                              {selectedAddressId === addr.id && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />}
+                            <View
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: 12,
+                                borderWidth: 2,
+                                borderColor:
+                                  selectedAddressId === addr.id
+                                    ? theme.primary
+                                    : theme.border,
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {selectedAddressId === addr.id && (
+                                <View
+                                  style={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: 6,
+                                    backgroundColor: theme.primary,
+                                  }}
+                                />
+                              )}
                             </View>
                           </View>
                         </View>
@@ -1604,31 +2033,79 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   )}
                   {manualAddress && !selectedAddressId ? (
                     <Pressable
-                      style={[styles.summaryCard, {
-                        backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4',
-                        marginBottom: 12,
-                        borderWidth: 2,
-                        borderColor: theme.primary,
-                        borderRadius: 12,
-                        padding: 16
-                      }]}
+                      style={[
+                        styles.summaryCard,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(22, 163, 74, 0.15)"
+                            : "#F0FDF4",
+                          marginBottom: 12,
+                          borderWidth: 2,
+                          borderColor: theme.primary,
+                          borderRadius: 12,
+                          padding: 16,
+                        },
+                      ]}
                     >
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                        }}
+                      >
                         <View style={{ flex: 1, paddingRight: 12 }}>
-                          <Text style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}>
+                          <Text
+                            style={{
+                              color: theme.text,
+                              fontWeight: "700",
+                              fontSize: 16,
+                            }}
+                          >
                             Current Location
                           </Text>
-                          <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, lineHeight: 20 }}>
+                          <Text
+                            style={{
+                              color: theme.text,
+                              marginTop: 6,
+                              fontSize: 14,
+                              lineHeight: 20,
+                            }}
+                          >
                             {manualAddress}
                           </Text>
                           {pincode ? (
-                            <Text style={{ color: theme.text, marginTop: 6, fontSize: 14, fontWeight: '500' }}>
+                            <Text
+                              style={{
+                                color: theme.text,
+                                marginTop: 6,
+                                fontSize: 14,
+                                fontWeight: "500",
+                              }}
+                            >
                               Pincode: {pincode}
                             </Text>
                           ) : null}
                         </View>
-                        <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: theme.primary, alignItems: 'center', justifyContent: 'center' }}>
-                          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: theme.primary }} />
+                        <View
+                          style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 12,
+                            borderWidth: 2,
+                            borderColor: theme.primary,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <View
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: 6,
+                              backgroundColor: theme.primary,
+                            }}
+                          />
                         </View>
                       </View>
                     </Pressable>
@@ -1636,65 +2113,181 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
 
                   {savedAddresses.length > 0 && (
                     <Pressable
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12 }}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        paddingVertical: 12,
+                      }}
                       onPress={() => {
-                        if (validateUserDetails()) navigation.navigate("LocationSearch");
+                        if (validateUserDetails())
+                          navigation.navigate("LocationSearch");
                       }}
                     >
                       <Ionicons name="add" size={20} color={theme.primary} />
-                      <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 15 }}>Add New Address</Text>
+                      <Text
+                        style={{
+                          color: theme.primary,
+                          fontWeight: "600",
+                          fontSize: 15,
+                        }}
+                      >
+                        Add New Address
+                      </Text>
                     </Pressable>
                   )}
                 </>
               )}
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: theme.border }} />
-              <Text style={{ color: theme.textLight, marginHorizontal: 12, fontSize: 12, fontWeight: '600' }}>OR</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: theme.border }} />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginVertical: 16,
+              }}
+            >
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: theme.border }}
+              />
+              <Text
+                style={{
+                  color: theme.textLight,
+                  marginHorizontal: 12,
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
+              >
+                OR
+              </Text>
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: theme.border }}
+              />
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
-              <Pressable onPress={fetchCurrentLocation} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 12, paddingHorizontal: 20, backgroundColor: theme.surfaceVariant, borderRadius: 8, borderWidth: 1, borderColor: theme.border }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Pressable
+                onPress={fetchCurrentLocation}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  backgroundColor: theme.surfaceVariant,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                }}
+              >
                 {fetchingLocation ? (
                   <ActivityIndicator size="small" color={theme.primary} />
                 ) : (
                   <Ionicons name="location" size={18} color={theme.primary} />
                 )}
-                <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>
+                <Text
+                  style={{
+                    color: theme.primary,
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
                   {fetchingLocation ? "Fetching..." : t("checkout.useLocation")}
                 </Text>
               </Pressable>
             </View>
 
             {/* EDIT ADDRESS MODAL */}
-            <Modal visible={!!editingAddress} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setEditingAddress(null)}>
+            <Modal
+              visible={!!editingAddress}
+              transparent
+              animationType="fade"
+              statusBarTranslucent
+              onRequestClose={() => setEditingAddress(null)}
+            >
               <View style={styles.pickerOverlay}>
-                <View style={[styles.pickerModal, { width: '90%', maxHeight: '80%', padding: 20, backgroundColor: theme.background }]}>
-                  <Text style={[styles.addTitle, { color: theme.text, marginBottom: 15 }]}>Edit Address</Text>
+                <View
+                  style={[
+                    styles.pickerModal,
+                    {
+                      width: "90%",
+                      maxHeight: "80%",
+                      padding: 20,
+                      backgroundColor: theme.background,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.addTitle,
+                      { color: theme.text, marginBottom: 15 },
+                    ]}
+                  >
+                    Edit Address
+                  </Text>
 
-                  <Text style={[styles.label, { color: theme.text }]}>House / Flat No</Text>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    House / Flat No
+                  </Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
                     value={editHouseNo}
                     onChangeText={setEditHouseNo}
                     placeholder="e.g. Flat 101"
                     placeholderTextColor={theme.textLight}
                   />
 
-                  <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>Landmark</Text>
+                  <Text
+                    style={[styles.label, { color: theme.text, marginTop: 15 }]}
+                  >
+                    Landmark
+                  </Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
                     value={editLandmark}
                     onChangeText={setEditLandmark}
                     placeholder="e.g. Near Apollo Hospital"
                     placeholderTextColor={theme.textLight}
                   />
 
-                  <Text style={[styles.label, { color: theme.text, marginTop: 15 }]}>{t("checkout.fullAddress")}</Text>
+                  <Text
+                    style={[styles.label, { color: theme.text, marginTop: 15 }]}
+                  >
+                    {t("checkout.fullAddress")}
+                  </Text>
                   <TextInput
-                    style={[styles.input, { height: 100, textAlignVertical: 'top', paddingTop: 12, backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                    style={[
+                      styles.input,
+                      {
+                        height: 100,
+                        textAlignVertical: "top",
+                        paddingTop: 12,
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
                     value={editFullAddress}
                     onChangeText={setEditFullAddress}
                     placeholder="Full Address"
@@ -1703,21 +2296,49 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     numberOfLines={4}
                   />
 
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 25, gap: 12 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
+                      marginTop: 25,
+                      gap: 12,
+                    }}
+                  >
                     <Pressable
-                      style={{ padding: 12, borderRadius: 8, justifyContent: 'center' }}
+                      style={{
+                        padding: 12,
+                        borderRadius: 8,
+                        justifyContent: "center",
+                      }}
                       onPress={() => setEditingAddress(null)}
                     >
-                      <Text style={{ color: theme.text, fontWeight: "600" }}>Cancel</Text>
+                      <Text style={{ color: theme.text, fontWeight: "600" }}>
+                        Cancel
+                      </Text>
                     </Pressable>
 
                     <Pressable
-                      style={{ backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                      style={{
+                        backgroundColor: theme.primary,
+                        paddingHorizontal: 20,
+                        paddingVertical: 12,
+                        borderRadius: 8,
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
                       onPress={handleUpdateAddress}
                       disabled={isSavingAddress}
                     >
-                      {isSavingAddress ? <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} /> : null}
-                      <Text style={{ color: '#000', fontWeight: '700' }}>Save</Text>
+                      {isSavingAddress ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#000"
+                          style={{ marginRight: 8 }}
+                        />
+                      ) : null}
+                      <Text style={{ color: "#000", fontWeight: "700" }}>
+                        Save
+                      </Text>
                     </Pressable>
                   </View>
                 </View>
@@ -1727,9 +2348,20 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             {/* CONFIRM PINCODE INPUT */}
             {selectedAddressId && (
               <View style={{ marginTop: 16 }}>
-                <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>Confirm Pincode for Serviceability</Text>
+                <Text
+                  style={[styles.label, { color: theme.text, marginBottom: 8 }]}
+                >
+                  Confirm Pincode for Serviceability
+                </Text>
                 <TextInput
-                  style={[styles.input, { backgroundColor: theme.surfaceVariant, borderColor: theme.border, color: theme.text }]}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.surfaceVariant,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
                   value={pincode}
                   onChangeText={(text) => {
                     const onlyDigits = text.replace(/\D/g, "");
@@ -1746,7 +2378,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             {/* PINCODE STATUS BADGE */}
             {pincode.length === 6 && (
               <Pressable
-                disabled={checkingPincode || isPincodeServiceable || !isPincodeInArea}
+                disabled={
+                  checkingPincode || isPincodeServiceable || !isPincodeInArea
+                }
                 onPress={() => setShowEmergencyModal(true)}
                 style={[
                   styles.serviceStatusBox,
@@ -1757,7 +2391,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                       : isPincodeInArea
                         ? { backgroundColor: "#FFF3E0", borderColor: "#FFE0B2" }
                         : styles.serviceUnavailableBox,
-                  { marginTop: 12 }
+                  { marginTop: 12 },
                 ]}
               >
                 <Ionicons
@@ -1806,34 +2440,94 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           </View>
         </View>
 
-        <Text style={[styles.pageTitle, { color: theme.text, marginTop: 28 }]}>{t("schedule.title")}</Text>
+        <Text style={[styles.pageTitle, { color: theme.text, marginTop: 28 }]}>
+          {t("schedule.title")}
+        </Text>
 
         {/* MONTH / YEAR */}
         <View style={styles.dropdownRow}>
-          <Pressable style={[styles.pickerBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]} onPress={() => setShowMonthPicker(true)}>
-            <Text style={[styles.pickerBtnText, { color: theme.text }]}>{MONTHS[month]}</Text>
-            <Text style={[styles.pickerArrow, { color: theme.textLight }]}>▼</Text>
+          <Pressable
+            style={[
+              styles.pickerBtn,
+              {
+                backgroundColor: theme.surfaceVariant,
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={() => setShowMonthPicker(true)}
+          >
+            <Text style={[styles.pickerBtnText, { color: theme.text }]}>
+              {MONTHS[month]}
+            </Text>
+            <Text style={[styles.pickerArrow, { color: theme.textLight }]}>
+              ▼
+            </Text>
           </Pressable>
 
-          <Pressable style={[styles.pickerBtn, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]} onPress={() => setShowYearPicker(true)}>
-            <Text style={[styles.pickerBtnText, { color: theme.text }]}>{String(year)}</Text>
-            <Text style={[styles.pickerArrow, { color: theme.textLight }]}>▼</Text>
+          <Pressable
+            style={[
+              styles.pickerBtn,
+              {
+                backgroundColor: theme.surfaceVariant,
+                borderColor: theme.border,
+              },
+            ]}
+            onPress={() => setShowYearPicker(true)}
+          >
+            <Text style={[styles.pickerBtnText, { color: theme.text }]}>
+              {String(year)}
+            </Text>
+            <Text style={[styles.pickerArrow, { color: theme.textLight }]}>
+              ▼
+            </Text>
           </Pressable>
         </View>
 
         {/* Month Picker Modal */}
-        <Modal visible={showMonthPicker} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setShowMonthPicker(false)}>
-          <Pressable style={styles.pickerOverlay} onPress={() => setShowMonthPicker(false)}>
-            <View style={[styles.pickerModal, { width: 250, maxHeight: 300, backgroundColor: theme.background }]}>
+        <Modal
+          visible={showMonthPicker}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setShowMonthPicker(false)}
+        >
+          <Pressable
+            style={styles.pickerOverlay}
+            onPress={() => setShowMonthPicker(false)}
+          >
+            <View
+              style={[
+                styles.pickerModal,
+                {
+                  width: 250,
+                  maxHeight: 300,
+                  backgroundColor: theme.background,
+                },
+              ]}
+            >
               <FlatList
                 data={MONTHS}
                 keyExtractor={(item) => item}
                 renderItem={({ item, index }) => (
                   <Pressable
-                    style={[styles.pickerItem, month === index && styles.pickerItemSelected]}
-                    onPress={() => { setMonth(index); setShowMonthPicker(false); }}
+                    style={[
+                      styles.pickerItem,
+                      month === index && styles.pickerItemSelected,
+                    ]}
+                    onPress={() => {
+                      setMonth(index);
+                      setShowMonthPicker(false);
+                    }}
                   >
-                    <Text style={[styles.pickerItemText, { color: theme.text }, month === index && styles.pickerItemTextSelected]}>{item}</Text>
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        { color: theme.text },
+                        month === index && styles.pickerItemTextSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
                   </Pressable>
                 )}
               />
@@ -1842,18 +2536,50 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         </Modal>
 
         {/* Year Picker Modal */}
-        <Modal visible={showYearPicker} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setShowYearPicker(false)}>
-          <Pressable style={styles.pickerOverlay} onPress={() => setShowYearPicker(false)}>
-            <View style={[styles.pickerModal, { width: 150, maxHeight: 200, backgroundColor: theme.background }]}>
+        <Modal
+          visible={showYearPicker}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setShowYearPicker(false)}
+        >
+          <Pressable
+            style={styles.pickerOverlay}
+            onPress={() => setShowYearPicker(false)}
+          >
+            <View
+              style={[
+                styles.pickerModal,
+                {
+                  width: 150,
+                  maxHeight: 200,
+                  backgroundColor: theme.background,
+                },
+              ]}
+            >
               <FlatList
                 data={availableYears}
                 keyExtractor={(item) => String(item)}
                 renderItem={({ item }) => (
                   <Pressable
-                    style={[styles.pickerItem, year === item && styles.pickerItemSelected]}
-                    onPress={() => { setYear(item); setShowYearPicker(false); }}
+                    style={[
+                      styles.pickerItem,
+                      year === item && styles.pickerItemSelected,
+                    ]}
+                    onPress={() => {
+                      setYear(item);
+                      setShowYearPicker(false);
+                    }}
                   >
-                    <Text style={[styles.pickerItemText, { color: theme.text }, year === item && styles.pickerItemTextSelected]}>{String(item)}</Text>
+                    <Text
+                      style={[
+                        styles.pickerItemText,
+                        { color: theme.text },
+                        year === item && styles.pickerItemTextSelected,
+                      ]}
+                    >
+                      {String(item)}
+                    </Text>
                   </Pressable>
                 )}
               />
@@ -1866,10 +2592,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           <View style={{ flexDirection: "row" }}>
             {DAYS.map((d, i) => (
               <View key={d} style={styles.dayCol}>
-                <Text style={[styles.dayLabel, { color: theme.textLight }]}>{d}</Text>
+                <Text style={[styles.dayLabel, { color: theme.textLight }]}>
+                  {d}
+                </Text>
 
                 {calendar[i].map((date: number | null, idx: number) => {
-                  if (!date) return <View key={`empty-${idx}`} style={styles.emptyDate} />;
+                  if (!date)
+                    return (
+                      <View key={`empty-${idx}`} style={styles.emptyDate} />
+                    );
 
                   const disabled = isPastDate(year, month, date);
                   const selected = selectedDate === date;
@@ -1879,7 +2610,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                       key={date}
                       disabled={disabled}
                       onPress={() => {
-                        if (validateBeforeScheduling('selecting a date')) {
+                        if (validateBeforeScheduling("selecting a date")) {
                           setSelectedDate(date);
                         }
                       }}
@@ -1909,7 +2640,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         {/* TIME */}
         {selectedDate && (
           <>
-            <Text style={[styles.section, { color: theme.text }]}>{t("schedule.selectTime")}</Text>
+            <Text style={[styles.section, { color: theme.text }]}>
+              {t("schedule.selectTime")}
+            </Text>
 
             <View style={styles.timeGrid}>
               {availableTimeSlots.map((time) => {
@@ -1919,13 +2652,16 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     key={time}
                     disabled={disabled}
                     onPress={() => {
-                      if (validateBeforeScheduling('selecting a time')) {
+                      if (validateBeforeScheduling("selecting a time")) {
                         setSelectedTime(time);
                       }
                     }}
                     style={[
                       styles.timeBox,
-                      { backgroundColor: theme.surfaceVariant, borderColor: theme.border },
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                      },
                       disabled && {
                         backgroundColor: isDark ? "#2a2a2a" : "#f0f0f0",
                         borderColor: isDark ? "#333" : "#ddd",
@@ -1966,16 +2702,16 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               pincode.trim().length !== 6 ||
               checkingPincode ||
               !isPincodeServiceable) &&
-            styles.disabledBtn,
+              styles.disabledBtn,
           ]}
           onPress={async () => {
-            if (!validateBeforeScheduling('proceeding')) return;
+            if (!validateBeforeScheduling("proceeding")) return;
 
             if (!selectedDate || !selectedTime) {
               setAlertConfig({
                 title: "Schedule Required",
                 message: "Please select a date and time for your service.",
-                type: "warning"
+                type: "warning",
               });
               setShowAlertModal(true);
               return;
@@ -1985,7 +2721,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               setAlertConfig({
                 title: "Service Required",
                 message: "Please select at least one service.",
-                type: "warning"
+                type: "warning",
               });
               setShowAlertModal(true);
               return;
@@ -1997,7 +2733,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               setAlertConfig({
                 title: "Not Serviceable",
                 message: "The selected address pincode is not serviceable.",
-                type: "warning"
+                type: "warning",
               });
               setShowAlertModal(true);
               return;
@@ -2016,7 +2752,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   pincode: pincode.trim(),
                 });
               } catch (err) {
-                console.error("[CUSTOMER FASTAPI] Failed updating profile before checkout:", err);
+                console.error(
+                  "[CUSTOMER FASTAPI] Failed updating profile before checkout:",
+                  err,
+                );
               }
             }
 
@@ -2030,21 +2769,42 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             });
           }}
         >
-          <Text style={[styles.primaryText, { color: theme.background }]}>{t("schedule.proceed")}</Text>
+          <Text style={[styles.primaryText, { color: theme.background }]}>
+            {t("schedule.proceed")}
+          </Text>
         </Pressable>
 
         {/* ================= ADD SERVICE MODAL ================= */}
-        <Modal visible={showAddService} animationType="slide" statusBarTranslucent={true}>
-          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", padding: 10 }}>
+        <Modal
+          visible={showAddService}
+          animationType="slide"
+          statusBarTranslucent={true}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              padding: 10,
+            }}
+          >
             <AnimatedGradientBorder
               borderRadius={20}
               borderWidth={2}
               animationSpeed={3}
               style={{ flex: 1, maxHeight: "80%" }}
             >
-              <View style={{ flex: 1, backgroundColor: theme.background, borderRadius: 20, padding: 20 }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.background,
+                  borderRadius: 20,
+                  padding: 20,
+                }}
+              >
                 <View style={styles.addHeader}>
-                  <Text style={[styles.addTitle, { color: theme.text }]}>{t("schedule.addService")}</Text>
+                  <Text style={[styles.addTitle, { color: theme.text }]}>
+                    {t("schedule.addService")}
+                  </Text>
                   <Pressable onPress={() => setShowAddService(false)}>
                     <Text style={[styles.close, { color: theme.text }]}>✕</Text>
                   </Pressable>
@@ -2055,10 +2815,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     const exists = editServices.some((x) => x.id === s.id);
 
                     return (
-                      <View key={s.id} style={[styles.addRow, { borderColor: theme.border }]}>
+                      <View
+                        key={s.id}
+                        style={[styles.addRow, { borderColor: theme.border }]}
+                      >
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.bold, { color: theme.text }]}>{s.title}</Text>
-                          <Text style={{ color: theme.textLight }}>{s.duration}</Text>
+                          <Text style={[styles.bold, { color: theme.text }]}>
+                            {s.title}
+                          </Text>
+                          <Text style={{ color: theme.textLight }}>
+                            {s.duration}
+                          </Text>
                           <Text style={{ color: theme.text }}>{s.price}</Text>
                         </View>
 
@@ -2074,7 +2841,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                 price: s.price,
                                 original_price: s.original_price,
                                 discount_percent: s.discount_percent,
-                                discount_label: (s as any)?.discount_label ?? null,
+                                discount_label:
+                                  (s as any)?.discount_label ?? null,
                                 tax_percent: (s as any)?.tax_percent ?? null,
                               },
                             ]);
@@ -2085,7 +2853,9 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                             exists && { backgroundColor: "#ccc" },
                           ]}
                         >
-                          <Text style={{ color: "#fff", fontSize: 22 }}>＋</Text>
+                          <Text style={{ color: "#fff", fontSize: 22 }}>
+                            ＋
+                          </Text>
                         </Pressable>
                       </View>
                     );
@@ -2098,20 +2868,43 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
       </ScrollView>
 
       {/* ================= ADDONS LIST MODAL ================= */}
-      <Modal visible={showAddonsModal} transparent animationType="slide" statusBarTranslucent={true}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top", "bottom"]}>
+      <Modal
+        visible={showAddonsModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent={true}
+      >
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: "transparent" }}
+          edges={["top", "bottom"]}
+        >
           <View
-            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 10, paddingVertical: 20 }}
-
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              paddingHorizontal: 10,
+              paddingVertical: 20,
+            }}
           >
             <AnimatedGradientBorder
               borderRadius={20}
               borderWidth={2}
               animationSpeed={3}
-              style={{ width: "100%", maxHeight: "80%", alignSelf: "stretch", flex: 1 }}
+              style={{
+                width: "100%",
+                maxHeight: "80%",
+                alignSelf: "stretch",
+                flex: 1,
+              }}
               flex={1}
             >
-              <View style={{ flex: 1, backgroundColor: theme.background, borderRadius: 20 }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.background,
+                  borderRadius: 20,
+                }}
+              >
                 {/* Header */}
                 <View
                   style={{
@@ -2124,13 +2917,25 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                     borderBottomColor: theme.border,
                   }}
                 >
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: theme.text }}>{t("schedule.addons")}</Text>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "800",
+                      color: theme.text,
+                    }}
+                  >
+                    {t("schedule.addons")}
+                  </Text>
                   <Pressable
                     onPress={() => {
                       setShowAddonsModal(false);
                     }}
                   >
-                    <Text style={{ fontSize: 20, padding: 5, color: theme.text }}>✕</Text>
+                    <Text
+                      style={{ fontSize: 20, padding: 5, color: theme.text }}
+                    >
+                      ✕
+                    </Text>
                   </Pressable>
                 </View>
 
@@ -2139,13 +2944,19 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   scrollEventThrottle={16}
                 >
                   {filteredAddons.length === 0 ? (
-                    <Text style={{ textAlign: "center", marginTop: 20, color: "#888" }}>
+                    <Text
+                      style={{
+                        textAlign: "center",
+                        marginTop: 20,
+                        color: "#888",
+                      }}
+                    >
                       No extra add-ons available.
                     </Text>
                   ) : (
                     filteredAddons.map((addon) => {
                       const isAdded = editServices.some(
-                        (s) => s.id === addon.id
+                        (s) => s.id === addon.id,
                       );
 
                       return (
@@ -2163,24 +2974,33 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                           }}
                         >
                           {/* Left Side: Image */}
-                          <View style={{ width: 100, height: 100, borderRadius: 10, overflow: 'hidden' }}>
-                            {addon.image && addon.image.trim() !== '' ? (
+                          <View
+                            style={{
+                              width: 100,
+                              height: 100,
+                              borderRadius: 10,
+                              overflow: "hidden",
+                            }}
+                          >
+                            {addon.image && addon.image.trim() !== "" ? (
                               <Image
                                 source={{ uri: addon.image }}
-                                style={{ width: '100%', height: '100%' }}
+                                style={{ width: "100%", height: "100%" }}
                                 contentFit="cover"
                               />
                             ) : (
                               <View
                                 style={{
-                                  width: '100%',
-                                  height: '100%',
+                                  width: "100%",
+                                  height: "100%",
                                   backgroundColor: isDark ? "#333" : "#f0f0f0",
                                   alignItems: "center",
                                   justifyContent: "center",
                                 }}
                               >
-                                <Text style={{ color: "#ccc", fontSize: 10 }}>No Image</Text>
+                                <Text style={{ color: "#ccc", fontSize: 10 }}>
+                                  No Image
+                                </Text>
                               </View>
                             )}
                           </View>
@@ -2194,7 +3014,14 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                             }}
                           >
                             <View>
-                              <Text style={{ fontSize: 16, fontWeight: "800", color: theme.text }} numberOfLines={1}>
+                              <Text
+                                style={{
+                                  fontSize: 16,
+                                  fontWeight: "800",
+                                  color: theme.text,
+                                }}
+                                numberOfLines={1}
+                              >
                                 {addon.title}
                               </Text>
                               <Text
@@ -2207,8 +3034,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                 {addon.duration} mins
                               </Text>
 
-                              <Text style={{ fontSize: 15, fontWeight: "700", color: theme.text, marginTop: 2 }}>
-                                {String(addon.price).startsWith('₹') ? addon.price : `₹${addon.price}`}
+                              <Text
+                                style={{
+                                  fontSize: 15,
+                                  fontWeight: "700",
+                                  color: theme.text,
+                                  marginTop: 2,
+                                }}
+                              >
+                                {String(addon.price).startsWith("₹")
+                                  ? addon.price
+                                  : `₹${addon.price}`}
                               </Text>
                             </View>
 
@@ -2233,11 +3069,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                   borderWidth: 1,
                                   borderColor: "#E5E7EB",
                                   backgroundColor: "#F9FAFB",
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
+                                  alignItems: "center",
+                                  justifyContent: "center",
                                 }}
                               >
-                                <Text style={{ fontSize: 13, fontWeight: "700", color: "#374151" }}>
+                                <Text
+                                  style={{
+                                    fontSize: 13,
+                                    fontWeight: "700",
+                                    color: "#374151",
+                                  }}
+                                >
                                   {t("schedule.view")}
                                 </Text>
                               </Pressable>
@@ -2248,8 +3090,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                     flex: 1.2,
                                     flexDirection: "row",
                                     alignItems: "center",
-                                    justifyContent: 'space-between',
-                                    backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+                                    justifyContent: "space-between",
+                                    backgroundColor: isDark
+                                      ? "#2a2a2a"
+                                      : "#f0f0f0",
                                     borderRadius: 10,
                                     paddingHorizontal: 8,
                                   }}
@@ -2264,13 +3108,26 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                       paddingVertical: 8,
                                     }}
                                   >
-                                    <Text style={{ fontSize: 20, fontWeight: "700", color: theme.text }}>
+                                    <Text
+                                      style={{
+                                        fontSize: 20,
+                                        fontWeight: "700",
+                                        color: theme.text,
+                                      }}
+                                    >
                                       -
                                     </Text>
                                   </Pressable>
 
-                                  <Text style={{ fontSize: 16, fontWeight: "700", color: theme.text }}>
-                                    {editServices.find((s) => s.id === addon.id)?.quantity || 1}
+                                  <Text
+                                    style={{
+                                      fontSize: 16,
+                                      fontWeight: "700",
+                                      color: theme.text,
+                                    }}
+                                  >
+                                    {editServices.find((s) => s.id === addon.id)
+                                      ?.quantity || 1}
                                   </Text>
 
                                   <Pressable
@@ -2282,13 +3139,24 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                       paddingHorizontal: 10,
                                       paddingVertical: 8,
                                     }}
-                                    disabled={(editServices.find((s) => s.id === addon.id)?.quantity || 1) >= (addon.max_quantity || 3)}
+                                    disabled={
+                                      (editServices.find(
+                                        (s) => s.id === addon.id,
+                                      )?.quantity || 1) >=
+                                      (addon.max_quantity || 3)
+                                    }
                                   >
                                     <Text
                                       style={{
                                         fontSize: 20,
                                         fontWeight: "700",
-                                        color: (editServices.find((s) => s.id === addon.id)?.quantity || 1) >= (addon.max_quantity || 3) ? theme.textLight : theme.text
+                                        color:
+                                          (editServices.find(
+                                            (s) => s.id === addon.id,
+                                          )?.quantity || 1) >=
+                                          (addon.max_quantity || 3)
+                                            ? theme.textLight
+                                            : theme.text,
                                       }}
                                     >
                                       +
@@ -2307,7 +3175,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                                     paddingVertical: 10,
                                     borderRadius: 10,
                                     alignItems: "center",
-                                    justifyContent: 'center'
+                                    justifyContent: "center",
                                   }}
                                 >
                                   <Text
@@ -2344,8 +3212,12 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
           statusBarTranslucent={true}
         >
           <View
-            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", padding: 10, paddingTop: insets.top + 10 }}
-
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.55)",
+              padding: 10,
+              paddingTop: insets.top + 10,
+            }}
           >
             <AnimatedGradientBorder
               borderRadius={20}
@@ -2354,24 +3226,35 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               style={{ maxHeight: "80%" }}
               flex={1}
             >
-              <View style={{ flex: 1, backgroundColor: theme.background, borderRadius: 20, overflow: 'hidden' }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.background,
+                  borderRadius: 20,
+                  overflow: "hidden",
+                }}
+              >
                 {/* Close Button absolute top right */}
                 <Pressable
                   onPress={() => setSelectedAddonDetail(null)}
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 20,
                     right: 20,
                     zIndex: 10,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    backgroundColor: "rgba(0,0,0,0.5)",
                     borderRadius: 20,
                     width: 36,
                     height: 36,
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>✕</Text>
+                  <Text
+                    style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}
+                  >
+                    ✕
+                  </Text>
                 </Pressable>
 
                 <ScrollView
@@ -2382,7 +3265,8 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 >
                   {/* Full Image */}
                   <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
-                    {selectedAddonDetail.image && selectedAddonDetail.image.trim() !== '' ? (
+                    {selectedAddonDetail.image &&
+                    selectedAddonDetail.image.trim() !== "" ? (
                       <Image
                         source={{ uri: selectedAddonDetail.image }}
                         style={{ width: "100%", height: 280, borderRadius: 16 }}
@@ -2399,44 +3283,145 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                           borderRadius: 16,
                         }}
                       >
-                        <Text style={{ color: theme.textLight }}>No Image Available</Text>
+                        <Text style={{ color: theme.textLight }}>
+                          No Image Available
+                        </Text>
                       </View>
                     )}
                   </View>
 
                   <View style={{ padding: 20 }}>
-                    <Text style={{ fontSize: 24, fontWeight: "800", color: theme.text }}>{selectedAddonDetail.title}</Text>
-                    <Text style={{ fontSize: 14, color: theme.textLight, marginTop: 4 }}>{selectedAddonDetail.duration} mins • {selectedAddonDetail.service_type || 'Add-on'}</Text>
+                    <Text
+                      style={{
+                        fontSize: 24,
+                        fontWeight: "800",
+                        color: theme.text,
+                      }}
+                    >
+                      {selectedAddonDetail.title}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: theme.textLight,
+                        marginTop: 4,
+                      }}
+                    >
+                      {selectedAddonDetail.duration} mins •{" "}
+                      {selectedAddonDetail.service_type || "Add-on"}
+                    </Text>
 
                     {/* Description */}
                     {selectedAddonDetail.description && (
                       <>
-                        <Text style={{ fontSize: 18, fontWeight: "700", marginTop: 24, color: theme.text }}>Description</Text>
-                        <Text style={{ fontSize: 15, lineHeight: 22, marginTop: 8, color: theme.text }}>{selectedAddonDetail.description}</Text>
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "700",
+                            marginTop: 24,
+                            color: theme.text,
+                          }}
+                        >
+                          Description
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            lineHeight: 22,
+                            marginTop: 8,
+                            color: theme.text,
+                          }}
+                        >
+                          {selectedAddonDetail.description}
+                        </Text>
                       </>
                     )}
 
                     {/* Work Includes */}
-                    {selectedAddonDetail.work_includes && selectedAddonDetail.work_includes.trim() ? (
+                    {selectedAddonDetail.work_includes &&
+                    selectedAddonDetail.work_includes.trim() ? (
                       <>
-                        <Text style={{ fontSize: 18, fontWeight: "700", marginTop: 24, color: COLORS.saffron }}>Work Includes</Text>
-                        {parseTextList(selectedAddonDetail.work_includes).map((line, idx) => (
-                          <View key={idx} style={{ flexDirection: "row", marginTop: 8 }}>
-                            <Text style={{ marginRight: 8, fontSize: 15, color: theme.text }}>•</Text>
-                            <Text style={{ fontSize: 15, flex: 1, lineHeight: 22, color: theme.text }}>{line}</Text>
-                          </View>
-                        ))}
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "700",
+                            marginTop: 24,
+                            color: COLORS.saffron,
+                          }}
+                        >
+                          Work Includes
+                        </Text>
+                        {parseTextList(selectedAddonDetail.work_includes).map(
+                          (line, idx) => (
+                            <View
+                              key={idx}
+                              style={{ flexDirection: "row", marginTop: 8 }}
+                            >
+                              <Text
+                                style={{
+                                  marginRight: 8,
+                                  fontSize: 15,
+                                  color: theme.text,
+                                }}
+                              >
+                                •
+                              </Text>
+                              <Text
+                                style={{
+                                  fontSize: 15,
+                                  flex: 1,
+                                  lineHeight: 22,
+                                  color: theme.text,
+                                }}
+                              >
+                                {line}
+                              </Text>
+                            </View>
+                          ),
+                        )}
                       </>
                     ) : null}
 
                     {/* Work Not Includes */}
-                    {selectedAddonDetail.work_not_included && selectedAddonDetail.work_not_included.trim() ? (
+                    {selectedAddonDetail.work_not_included &&
+                    selectedAddonDetail.work_not_included.trim() ? (
                       <>
-                        <Text style={{ fontSize: 18, fontWeight: "700", marginTop: 24, color: "#D32F2F" }}>Work Not Includes</Text>
-                        {parseTextList(selectedAddonDetail.work_not_included).map((line, idx) => (
-                          <View key={idx} style={{ flexDirection: "row", marginTop: 8 }}>
-                            <Text style={{ marginRight: 8, fontSize: 15, color: theme.textLight }}>•</Text>
-                            <Text style={{ fontSize: 15, flex: 1, lineHeight: 22, color: theme.textLight }}>{line}</Text>
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: "700",
+                            marginTop: 24,
+                            color: "#D32F2F",
+                          }}
+                        >
+                          Work Not Includes
+                        </Text>
+                        {parseTextList(
+                          selectedAddonDetail.work_not_included,
+                        ).map((line, idx) => (
+                          <View
+                            key={idx}
+                            style={{ flexDirection: "row", marginTop: 8 }}
+                          >
+                            <Text
+                              style={{
+                                marginRight: 8,
+                                fontSize: 15,
+                                color: theme.textLight,
+                              }}
+                            >
+                              •
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 15,
+                                flex: 1,
+                                lineHeight: 22,
+                                color: theme.textLight,
+                              }}
+                            >
+                              {line}
+                            </Text>
                           </View>
                         ))}
                       </>
@@ -2445,13 +3430,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 </ScrollView>
 
                 {/* Pinned Bottom Area: Price and Add Button */}
-                <View style={{
-                  padding: 20,
-                  paddingBottom: Math.max(insets.bottom, 20),
-                  borderTopWidth: 1,
-                  borderTopColor: theme.border,
-                  backgroundColor: theme.background
-                }}>
+                <View
+                  style={{
+                    padding: 20,
+                    paddingBottom: Math.max(insets.bottom, 20),
+                    borderTopWidth: 1,
+                    borderTopColor: theme.border,
+                    backgroundColor: theme.background,
+                  }}
+                >
                   <PriceRow
                     price={selectedAddonDetail.price}
                     original_price={selectedAddonDetail.original_price}
@@ -2460,15 +3447,13 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                   />
 
                   {/* Action Button */}
-                  {editServices.find(
-                    (s) => s.id === selectedAddonDetail.id
-                  ) ? (
+                  {editServices.find((s) => s.id === selectedAddonDetail.id) ? (
                     <View
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0',
+                        backgroundColor: isDark ? "#2a2a2a" : "#f0f0f0",
                         borderRadius: 10,
                         paddingHorizontal: 20,
                         paddingVertical: 14,
@@ -2479,23 +3464,50 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                         onPress={() => decrementAddon(selectedAddonDetail.id)}
                         style={{ paddingHorizontal: 20, paddingVertical: 8 }}
                       >
-                        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.text }}>-</Text>
+                        <Text
+                          style={{
+                            fontSize: 24,
+                            fontWeight: "700",
+                            color: theme.text,
+                          }}
+                        >
+                          -
+                        </Text>
                       </Pressable>
 
-                      <Text style={{ fontSize: 18, fontWeight: "700", color: theme.text }}>
-                        {editServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1}
+                      <Text
+                        style={{
+                          fontSize: 18,
+                          fontWeight: "700",
+                          color: theme.text,
+                        }}
+                      >
+                        {editServices.find(
+                          (s) => s.id === selectedAddonDetail.id,
+                        )?.quantity || 1}
                       </Text>
 
                       <Pressable
                         onPress={() => addAddonToCart(selectedAddonDetail)}
                         style={{ paddingHorizontal: 20, paddingVertical: 8 }}
-                        disabled={(editServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= (selectedAddonDetail.max_quantity || 3)}
+                        disabled={
+                          (editServices.find(
+                            (s) => s.id === selectedAddonDetail.id,
+                          )?.quantity || 1) >=
+                          (selectedAddonDetail.max_quantity || 3)
+                        }
                       >
                         <Text
                           style={{
                             fontSize: 24,
                             fontWeight: "700",
-                            color: (editServices.find((s) => s.id === selectedAddonDetail.id)?.quantity || 1) >= (selectedAddonDetail.max_quantity || 3) ? theme.textLight : theme.text
+                            color:
+                              (editServices.find(
+                                (s) => s.id === selectedAddonDetail.id,
+                              )?.quantity || 1) >=
+                              (selectedAddonDetail.max_quantity || 3)
+                                ? theme.textLight
+                                : theme.text,
                           }}
                         >
                           +
@@ -2513,7 +3525,15 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                         marginTop: 15,
                       }}
                     >
-                      <Text style={{ color: "#000", fontWeight: "800", fontSize: 16 }}>+ Add</Text>
+                      <Text
+                        style={{
+                          color: "#000",
+                          fontWeight: "800",
+                          fontSize: 16,
+                        }}
+                      >
+                        + Add
+                      </Text>
                     </Pressable>
                   )}
                 </View>
@@ -2523,16 +3543,32 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
         </Modal>
       )}
 
-
-
       {/* Custom Alert Modal */}
-      <Modal visible={showAlertModal} transparent animationType="fade" onRequestClose={() => setShowAlertModal(false)}>
+      <Modal
+        visible={showAlertModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAlertModal(false)}
+      >
         <View style={styles.alertOverlay}>
-          <View style={[styles.alertContent, { backgroundColor: theme.background }]}>
-            <Text style={[styles.alertTitle, { color: theme.text }]}>{alertConfig.title}</Text>
-            <Text style={[styles.alertMessage, { color: theme.textLight }]}>{alertConfig.message}</Text>
-            <Pressable style={[styles.alertButton, { backgroundColor: theme.primary }]} onPress={() => setShowAlertModal(false)}>
-              <Text style={[styles.alertButtonText, { color: theme.background }]}>OK</Text>
+          <View
+            style={[styles.alertContent, { backgroundColor: theme.background }]}
+          >
+            <Text style={[styles.alertTitle, { color: theme.text }]}>
+              {alertConfig.title}
+            </Text>
+            <Text style={[styles.alertMessage, { color: theme.textLight }]}>
+              {alertConfig.message}
+            </Text>
+            <Pressable
+              style={[styles.alertButton, { backgroundColor: theme.primary }]}
+              onPress={() => setShowAlertModal(false)}
+            >
+              <Text
+                style={[styles.alertButtonText, { color: theme.background }]}
+              >
+                OK
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -2551,7 +3587,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
             backgroundColor: "rgba(0,0,0,0.6)",
             justifyContent: "center",
             alignItems: "center",
-            padding: 20
+            padding: 20,
           }}
           onPress={() => setShowEmergencyModal(false)}
         >
@@ -2567,7 +3603,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
-              shadowRadius: 10
+              shadowRadius: 10,
             }}
             onPress={(e) => e.stopPropagation()}
           >
@@ -2579,7 +3615,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 backgroundColor: "#FFF3E0",
                 justifyContent: "center",
                 alignItems: "center",
-                marginBottom: 16
+                marginBottom: 16,
               }}
             >
               <Ionicons name="call" size={28} color="#F57C00" />
@@ -2591,7 +3627,7 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 fontWeight: "800",
                 color: theme.text,
                 textAlign: "center",
-                marginBottom: 10
+                marginBottom: 10,
               }}
             >
               No Partners Available
@@ -2603,10 +3639,11 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 color: theme.textLight,
                 textAlign: "center",
                 lineHeight: 20,
-                marginBottom: 20
+                marginBottom: 20,
               }}
             >
-              We regret, No partners are available at this moment. Please Contact us +91 7617618567 for emergency booking.
+              We regret, No partners are available at this moment. Please
+              Contact us +91 7617618567 for emergency booking.
             </Text>
 
             <TouchableOpacity
@@ -2619,10 +3656,10 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
                 justifyContent: "center",
                 alignItems: "center",
                 gap: 8,
-                marginBottom: 10
+                marginBottom: 10,
               }}
               onPress={() => {
-                Linking.openURL("tel:7617618567").catch(() => { });
+                Linking.openURL("tel:7617618567").catch(() => {});
               }}
             >
               <Ionicons name="call-outline" size={20} color="#FFF" />
@@ -2635,11 +3672,17 @@ export default function ScheduleScreen({ route }: ScheduleScreenProps) {
               style={{
                 paddingVertical: 10,
                 width: "100%",
-                alignItems: "center"
+                alignItems: "center",
               }}
               onPress={() => setShowEmergencyModal(false)}
             >
-              <Text style={{ color: theme.textLight, fontWeight: "600", fontSize: 14 }}>
+              <Text
+                style={{
+                  color: theme.textLight,
+                  fontWeight: "600",
+                  fontSize: 14,
+                }}
+              >
                 Close
               </Text>
             </TouchableOpacity>

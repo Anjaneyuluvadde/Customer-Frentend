@@ -1,20 +1,37 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { RouteProp, useNavigation } from "@react-navigation/native";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Linking, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  RouteProp,
+  useIsFocused,
+  useNavigation,
+} from "@react-navigation/native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLanguage } from "../context/LanguageContext";
 import { useNotification } from "../hooks/useNotification";
-import { processPayment } from "../lib/paymentService";
-import { supabase } from "../lib/supabase";
 import {
-  getCustomerBookingDetails,
-  getCustomerServices,
   cancelCustomerBooking,
-  submitCustomerBookingChecklist,
+  getCustomerBookingDetails,
   getCustomerBookingReview,
+  getCustomerServices,
+  submitCustomerBookingChecklist,
   submitCustomerBookingReview,
 } from "../lib/customerApi";
+import { processPayment } from "../lib/paymentService";
 import { RootStackParamList } from "../navigation/AppNavigator";
 
 type Props = {
@@ -23,6 +40,8 @@ type Props = {
 
 import { Ionicons } from "@expo/vector-icons";
 import AnimatedGradientBorder from "../components/AnimatedGradientBorder";
+import ChecklistSuccessModal from "../components/ChecklistSuccessModal";
+import LoadingOverlay from "../components/LoadingOverlay";
 import ReviewModal from "../components/ReviewModal";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
@@ -33,7 +52,9 @@ export default function BookingDetailsScreen({ route }: Props) {
   const { theme, isDark } = useTheme();
   const { showAlert, showToast } = useNotification();
   const [booking, setBooking] = useState(initialBooking);
-  const normalizedWorkStatus = String(booking?.work_status || "").trim().toUpperCase();
+  const normalizedWorkStatus = String(booking?.work_status || "")
+    .trim()
+    .toUpperCase();
   const [isEligibleToCancel, setIsEligibleToCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -49,53 +70,216 @@ export default function BookingDetailsScreen({ route }: Props) {
   } | null>(null);
   const [fetchingFees, setFetchingFees] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [initialLoadedBookingId, setInitialLoadedBookingId] = useState<
+    string | null
+  >(null);
+
+  const isInitialLoading =
+    Boolean(initialBooking?.id) &&
+    initialLoadedBookingId !== String(initialBooking.id);
   // const navigation = useNavigation();
   const navigation = useNavigation<any>();
+
   const bottomNavPadding = useBottomNavPadding();
 
+  // Checklist reminder
+  const isFocused = useIsFocused();
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const checklistPositionRef = useRef(0);
+
+  const shownRemindersRef = useRef<Set<string>>(new Set());
+
+  const [showChecklistReminder, setShowChecklistReminder] = useState(false);
+
+  const [verifiedBookingId, setVerifiedBookingId] = useState<string | null>(
+    null,
+  );
+
+  const reminderProgress = useRef(new Animated.Value(1)).current;
+
   // Staff Details State
-  const [staffName, setStaffName] = useState<string | null>(initialBooking?.assigned_staff_name || null);
-  const [staffPhone, setStaffPhone] = useState<string | null>(initialBooking?.assigned_staff_phone || null);
+  const [staffName, setStaffName] = useState<string | null>(
+    initialBooking?.assigned_staff_name || null,
+  );
+  const [staffPhone, setStaffPhone] = useState<string | null>(
+    initialBooking?.assigned_staff_phone || null,
+  );
 
   // When staff is assigned, cancel option must be hidden
   const isStaffAssigned = Boolean(
     booking?.assigned_staff_email ||
     booking?.assigned_staff_id ||
     booking?.assigned_staff_name ||
-    staffName
+    staffName,
   );
 
   // Review State
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [review, setReview] = useState<{ rating: number; comment: string } | null>(null);
+  const [review, setReview] = useState<{
+    rating: number;
+    comment: string;
+  } | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Fetch fresh booking data on mount
+  // Automatically refresh booking while screen is active
   useEffect(() => {
-    if (!initialBooking?.id) return;
+    if (!initialBooking?.id || !isFocused) return;
+
+    let active = true;
+    let refreshTimer: ReturnType<typeof setTimeout>;
+
     const fetchLatest = async () => {
       try {
-        const { booking: latestBooking, staff } = await getCustomerBookingDetails(initialBooking.id);
-        if (latestBooking) setBooking(latestBooking);
+        const { booking: latestBooking, staff } =
+          await getCustomerBookingDetails(initialBooking.id);
+
+        if (!active) return;
+
+        if (latestBooking) {
+          setBooking(latestBooking);
+          setVerifiedBookingId(String(initialBooking.id));
+        }
+
         if (staff) {
           if (staff.name) setStaffName(staff.name);
           if (staff.phone) setStaffPhone(staff.phone);
         }
       } catch (err) {
         console.log("[CUSTOMER FASTAPI] fetchLatest error:", err);
+      } finally {
+        if (active) {
+          setInitialLoadedBookingId(String(initialBooking.id));
+
+          refreshTimer = setTimeout(fetchLatest, 5000);
+        }
       }
     };
+
     fetchLatest();
-  }, [initialBooking?.id]);
+
+    return () => {
+      active = false;
+      clearTimeout(refreshTimer);
+    };
+  }, [initialBooking?.id, isFocused]);
 
   // 🟢 Service Checklist Feature
   const [checklist, setChecklist] = useState<Record<number, boolean>>({});
   const [submittingChecklist, setSubmittingChecklist] = useState(false);
   const [isChecklistSubmitted, setIsChecklistSubmitted] = useState(false);
+  const [showChecklistSuccessModal, setShowChecklistSuccessModal] =
+    useState(false);
+
+  // Show checklist reminder only once per booking
+  useEffect(() => {
+    const bookingId = String(booking?.id || "");
+
+    const remoteSubmitted =
+      String(booking?.checklist_submitted || "")
+        .trim()
+        .toUpperCase() === "TRUE";
+
+    if (
+      !isFocused ||
+      isInitialLoading ||
+      !bookingId ||
+      verifiedBookingId !== bookingId ||
+      normalizedWorkStatus !== "UNDER_REVIEW" ||
+      isChecklistSubmitted ||
+      remoteSubmitted ||
+      submittingChecklist ||
+      showChecklistSuccessModal
+    ) {
+      setShowChecklistReminder(false);
+      return;
+    }
+
+    if (shownRemindersRef.current.has(bookingId)) {
+      return;
+    }
+
+    let active = true;
+
+    const checkAndShowReminder = async () => {
+      const reminderKey = `booking_checklist_reminder_${bookingId}`;
+
+      try {
+        const [alreadyShown, submitted] = await Promise.all([
+          AsyncStorage.getItem(reminderKey),
+          AsyncStorage.getItem(`booking_checklist_submitted_${bookingId}`),
+        ]);
+
+        if (!active) return;
+
+        if (
+          alreadyShown === "true" ||
+          submitted === "true" ||
+          shownRemindersRef.current.has(bookingId)
+        ) {
+          return;
+        }
+
+        shownRemindersRef.current.add(bookingId);
+
+        setShowChecklistReminder(true);
+
+        await AsyncStorage.setItem(reminderKey, "true");
+      } catch (error) {
+        console.warn("Checklist reminder error:", error);
+      }
+    };
+
+    checkAndShowReminder();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    booking.id,
+    booking.checklist_submitted,
+    normalizedWorkStatus,
+    verifiedBookingId,
+    isFocused,
+    isInitialLoading,
+    isChecklistSubmitted,
+    submittingChecklist,
+    showChecklistSuccessModal,
+  ]);
+
+  // Automatically close the reminder after two seconds
+  useEffect(() => {
+    if (!showChecklistReminder) return;
+
+    reminderProgress.setValue(1);
+
+    const animation = Animated.timing(reminderProgress, {
+      toValue: 0,
+      duration: 2000,
+      useNativeDriver: false,
+    });
+
+    animation.start();
+
+    const timer = setTimeout(() => {
+      setShowChecklistReminder(false);
+
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(0, checklistPositionRef.current - 15),
+        animated: true,
+      });
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      animation.stop();
+    };
+  }, [showChecklistReminder, reminderProgress]);
 
   const services = React.useMemo(() => {
     if (!booking.services) return [];
-    if (typeof booking.services === 'string') {
+    if (typeof booking.services === "string") {
       try {
         return JSON.parse(booking.services);
       } catch {
@@ -106,7 +290,11 @@ export default function BookingDetailsScreen({ route }: Props) {
   }, [booking.services]);
 
   const checklistItems = React.useMemo(() => {
-    const serviceName = (services[0]?.title || services[0]?.service_name || "").toLowerCase();
+    const serviceName = (
+      services[0]?.title ||
+      services[0]?.service_name ||
+      ""
+    ).toLowerCase();
 
     if (serviceName.includes("bathroom")) {
       return [
@@ -115,7 +303,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Mirrors & glass surfaces wiped",
         "Exhaust fan & switchboards cleaned",
         "Cobwebs removed",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     } else if (serviceName.includes("kitchen")) {
       return [
@@ -124,7 +312,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Chimney exterior wiped",
         "Appliances exterior wiped",
         "Exhaust fan & switchboards cleaned",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     } else if (serviceName.includes("sofa")) {
       return [
@@ -133,7 +321,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Shampooing and wet vacuuming completed",
         "Cushions properly cleaned",
         "Stains spot-treated",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     } else if (serviceName.includes("window") || serviceName.includes("door")) {
       return [
@@ -142,7 +330,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Tracks & channels vacuumed/wiped",
         "Mosquito nets brushed",
         "Doors & frames wiped",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     } else if (serviceName.includes("balcony")) {
       return [
@@ -150,7 +338,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Balcony floor scrubbed & washed",
         "Railings wiped & cleaned",
         "Cobwebs removed",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     } else if (serviceName.includes("express")) {
       return [
@@ -158,7 +346,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         "Dry dusting of all rooms completed",
         "Floors swept and mopped",
         "Basic tidying up of living spaces",
-        "Final inspection completed & customer satisfied"
+        "Final inspection completed & customer satisfied",
       ];
     }
 
@@ -172,7 +360,7 @@ export default function BookingDetailsScreen({ route }: Props) {
       "Kitchen, bathrooms & applicable areas completed",
       "Windows/glass & included tasks completed",
       "No visible dirt or waste left behind",
-      "Final inspection completed & customer satisfied"
+      "Final inspection completed & customer satisfied",
     ];
   }, [services]);
 
@@ -180,12 +368,16 @@ export default function BookingDetailsScreen({ route }: Props) {
     if (!booking.id) return;
     const loadChecklist = async () => {
       try {
-        const stored = await AsyncStorage.getItem(`booking_checklist_${booking.id}`);
+        const stored = await AsyncStorage.getItem(
+          `booking_checklist_${booking.id}`,
+        );
         if (stored) {
           setChecklist(JSON.parse(stored));
         }
-        const submitted = await AsyncStorage.getItem(`booking_checklist_submitted_${booking.id}`);
-        if (submitted === 'true') {
+        const submitted = await AsyncStorage.getItem(
+          `booking_checklist_submitted_${booking.id}`,
+        );
+        if (submitted === "true") {
           setIsChecklistSubmitted(true);
         }
       } catch (e) {
@@ -207,17 +399,17 @@ export default function BookingDetailsScreen({ route }: Props) {
       const payment = await processPayment(
         remaining,
         {
-          firstName: booking.customer_name?.split(' ')[0] || "",
-          lastName: booking.customer_name?.split(' ').slice(1).join(' ') || "",
+          firstName: booking.customer_name?.split(" ")[0] || "",
+          lastName: booking.customer_name?.split(" ").slice(1).join(" ") || "",
           email: booking.email || "",
           phone: booking.customer_phone || booking.phone_number || "",
           address: booking.full_address || "",
           city: "",
           region: "",
-          zip: ""
+          zip: "",
         },
         booking.id,
-        "REMAINING"
+        "REMAINING",
       );
       if (payment.success) {
         showToast("Payment Successful!", "success");
@@ -225,14 +417,22 @@ export default function BookingDetailsScreen({ route }: Props) {
           ...prev,
           remaining_amount: 0,
           paid_amount: Number(prev.paid_amount || 0) + remaining,
-          payment_status: "paid"
+          payment_status: "paid",
         }));
         setTimeout(() => onRefresh(), 2000);
       } else {
-        showAlert({ type: "error", title: "Payment Failed", message: "Payment could not be completed." });
+        showAlert({
+          type: "error",
+          title: "Payment Failed",
+          message: "Payment could not be completed.",
+        });
       }
     } catch (err: any) {
-      showAlert({ type: "error", title: "Payment Failed", message: "An error occurred during payment." });
+      showAlert({
+        type: "error",
+        title: "Payment Failed",
+        message: "An error occurred during payment.",
+      });
     } finally {
       setProcessingPayment(false);
     }
@@ -245,8 +445,11 @@ export default function BookingDetailsScreen({ route }: Props) {
         `Please pay the remaining amount of ₹${booking.remaining_amount} before checking off items.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: `Pay ₹${booking.remaining_amount}`, onPress: () => handlePayRemainingAmount() },
-        ]
+          {
+            text: `Pay ₹${booking.remaining_amount}`,
+            onPress: () => handlePayRemainingAmount(),
+          },
+        ],
       );
       return;
     }
@@ -254,7 +457,10 @@ export default function BookingDetailsScreen({ route }: Props) {
     try {
       setChecklist((prev) => {
         const updated = { ...prev, [index]: !prev[index] };
-        AsyncStorage.setItem(`booking_checklist_${booking.id}`, JSON.stringify(updated)).catch((e) => {
+        AsyncStorage.setItem(
+          `booking_checklist_${booking.id}`,
+          JSON.stringify(updated),
+        ).catch((e) => {
           console.warn("Failed to save checklist", e);
         });
         return updated;
@@ -271,8 +477,11 @@ export default function BookingDetailsScreen({ route }: Props) {
         `Please pay the remaining amount of ₹${booking.remaining_amount} before submitting the checklist.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: `Pay ₹${booking.remaining_amount}`, onPress: () => handlePayRemainingAmount() },
-        ]
+          {
+            text: `Pay ₹${booking.remaining_amount}`,
+            onPress: () => handlePayRemainingAmount(),
+          },
+        ],
       );
       return;
     }
@@ -302,51 +511,28 @@ export default function BookingDetailsScreen({ route }: Props) {
       try {
         await submitCustomerBookingChecklist(bookingId, payload);
         setIsChecklistSubmitted(true);
-        await AsyncStorage.setItem(`booking_checklist_submitted_${bookingId}`, 'true');
-
-        Alert.alert(
-          "Success",
-          "Checklist submitted successfully!",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [
-                    {
-                      name: "HomeDrawer",
-                      params: {
-                        screen: "AuthenticatedScreens",
-                        params: {
-                          screen: "MainTabs",
-                          params: {
-                            screen: "HomeTab",
-                          },
-                        },
-                      },
-                    },
-                  ],
-                });
-              },
-            },
-          ],
-          { cancelable: false }
+        await AsyncStorage.setItem(
+          `booking_checklist_submitted_${bookingId}`,
+          "true",
         );
+
+        setShowChecklistSuccessModal(true);
       } catch (chkError: any) {
         console.log("Error details:", chkError.message);
         Alert.alert("Error", "Failed to save: " + chkError.message);
       }
     } catch (err: any) {
       console.log("Submit checklist error:", err);
-      Alert.alert("Error", "Something went wrong while submitting the checklist!");
+      Alert.alert(
+        "Error",
+        "Something went wrong while submitting the checklist!",
+      );
     } finally {
       setSubmittingChecklist(false);
     }
   };
 
   const checklistProgress = Object.values(checklist).filter(Boolean).length;
-
 
   // Real-time subscription for booking updates (OTPs, staff assignment, etc.)
   // useEffect(() => {
@@ -374,21 +560,20 @@ export default function BookingDetailsScreen({ route }: Props) {
   //   };
   // }, [booking.id]);
 
-
-
-
   useEffect(() => {
     if (!booking.id) return;
     const loadChecklist = async () => {
       try {
         // 1. Local cache
-        const stored = await AsyncStorage.getItem(`booking_checklist_${booking.id}`);
+        const stored = await AsyncStorage.getItem(
+          `booking_checklist_${booking.id}`,
+        );
         if (stored) {
           setChecklist(JSON.parse(stored));
         }
 
         const localSubmitted = await AsyncStorage.getItem(
-          `booking_checklist_submitted_${booking.id}`
+          `booking_checklist_submitted_${booking.id}`,
         );
         if (localSubmitted === "true") {
           setIsChecklistSubmitted(true);
@@ -401,7 +586,10 @@ export default function BookingDetailsScreen({ route }: Props) {
             const details = await getCustomerBookingDetails(booking.id);
             remoteSubmitted = details?.booking?.checklist_submitted;
           } catch (err) {
-            console.log("Error checking checklist status via customer API:", err);
+            console.log(
+              "Error checking checklist status via customer API:",
+              err,
+            );
           }
         }
 
@@ -409,7 +597,7 @@ export default function BookingDetailsScreen({ route }: Props) {
           setIsChecklistSubmitted(true);
           await AsyncStorage.setItem(
             `booking_checklist_submitted_${booking.id}`,
-            "true"
+            "true",
           );
         }
       } catch (e) {
@@ -421,7 +609,8 @@ export default function BookingDetailsScreen({ route }: Props) {
 
   // 🟢 NEW POLICY: Calculate time difference and deep cleaning status
   const { diffHours, isDeepCleaning } = React.useMemo(() => {
-    if (!booking.booking_date || !booking.booking_time) return { diffHours: 999, isDeepCleaning: false };
+    if (!booking.booking_date || !booking.booking_time)
+      return { diffHours: 999, isDeepCleaning: false };
     try {
       const scheduledStr = `${booking.booking_date} ${booking.booking_time}`;
       const scheduledDate = new Date(scheduledStr);
@@ -429,7 +618,7 @@ export default function BookingDetailsScreen({ route }: Props) {
       const diff = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
       const deep = services.some((s: any) =>
-        s.title.toLowerCase().includes("deep cleaning")
+        s.title.toLowerCase().includes("deep cleaning"),
       );
 
       return { diffHours: diff, isDeepCleaning: deep };
@@ -439,13 +628,18 @@ export default function BookingDetailsScreen({ route }: Props) {
   }, [booking.booking_date, booking.booking_time, services]);
 
   // 🟢 Fetch dynamic cancellation_fee column from services table
-  const [serviceCancellationFee, setServiceCancellationFee] = useState<number | null>(null);
+  const [serviceCancellationFee, setServiceCancellationFee] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     const fetchCancellationFee = async () => {
       if (!services || services.length === 0) return;
 
-      const embeddedFee = services.find((s: any) => s.cancellation_fee !== undefined && s.cancellation_fee !== null);
+      const embeddedFee = services.find(
+        (s: any) =>
+          s.cancellation_fee !== undefined && s.cancellation_fee !== null,
+      );
       if (embeddedFee) {
         setServiceCancellationFee(Number(embeddedFee.cancellation_fee));
         return;
@@ -454,8 +648,12 @@ export default function BookingDetailsScreen({ route }: Props) {
       try {
         const allSvcs = await getCustomerServices();
         const ids = services.map((s: any) => s.id).filter(Boolean);
-        const titles = services.map((s: any) => s.title || s.service_name).filter(Boolean);
-        const matched = allSvcs.filter((s: any) => ids.includes(s.id) || titles.includes(s.title));
+        const titles = services
+          .map((s: any) => s.title || s.service_name)
+          .filter(Boolean);
+        const matched = allSvcs.filter(
+          (s: any) => ids.includes(s.id) || titles.includes(s.title),
+        );
         const fees = matched
           .map((item: any) => item.cancellation_fee)
           .filter((f: any) => f !== null && f !== undefined)
@@ -474,7 +672,9 @@ export default function BookingDetailsScreen({ route }: Props) {
     const checkEligibility = () => {
       let clientEligible = true;
       if (
-        ['COMPLETED', 'CANCELLED', 'UNDER_REVIEW'].includes(normalizedWorkStatus) ||
+        ["COMPLETED", "CANCELLED", "UNDER_REVIEW"].includes(
+          normalizedWorkStatus,
+        ) ||
         isStaffAssigned
       ) {
         clientEligible = false;
@@ -488,10 +688,12 @@ export default function BookingDetailsScreen({ route }: Props) {
     if (!isEligibleToCancel || isStaffAssigned) {
       showAlert({
         type: "info",
-        title: isStaffAssigned ? "Cancellation Unavailable" : t("notifications.cancellationClosed"),
+        title: isStaffAssigned
+          ? "Cancellation Unavailable"
+          : t("notifications.cancellationClosed"),
         message: isStaffAssigned
           ? "A service partner has already been assigned to this booking. Cancellations are not permitted after partner assignment."
-          : "Cancellation is no longer available for this booking status."
+          : "Cancellation is no longer available for this booking status.",
       });
       return;
     }
@@ -499,9 +701,10 @@ export default function BookingDetailsScreen({ route }: Props) {
     setFetchingFees(true);
     try {
       const fee = diffHours <= 6 ? (isDeepCleaning ? 299 : 99) : 0;
-      const actualPaid = booking.paid_amount !== undefined && booking.paid_amount !== null
-        ? Number(booking.paid_amount)
-        : Number(booking.total_amount || 0);
+      const actualPaid =
+        booking.paid_amount !== undefined && booking.paid_amount !== null
+          ? Number(booking.paid_amount)
+          : Number(booking.total_amount || 0);
       let data: any = {
         fee: fee,
         is_free: fee === 0,
@@ -516,8 +719,11 @@ export default function BookingDetailsScreen({ route }: Props) {
         actualPaidAmount = Number(booking.paid_amount);
       } else {
         // Fallback for older bookings before paid_amount was added
-        if (booking.payment_plan === 'PARTIAL' || booking.payment_status === 'partial') {
-          // If it was a partial payment but paid_amount is missing, we assume 0 or handle it gracefully, 
+        if (
+          booking.payment_plan === "PARTIAL" ||
+          booking.payment_status === "partial"
+        ) {
+          // If it was a partial payment but paid_amount is missing, we assume 0 or handle it gracefully,
           // but we MUST NOT assume they paid the total amount.
           // Ideally, we'd know the exact partial amount, but since we don't, 0 is safer than full refund.
           actualPaidAmount = 0;
@@ -531,7 +737,12 @@ export default function BookingDetailsScreen({ route }: Props) {
       // 🟢 Enforce 6-hour policy override in frontend if RPC returns 0
       // Explicitly check for the 6-hour boundary (<= 6 hours)
       if (diffHours <= 6 && (!data || data.fee === 0)) {
-        currentFee = serviceCancellationFee !== null ? serviceCancellationFee : (isDeepCleaning ? 299 : 99);
+        currentFee =
+          serviceCancellationFee !== null
+            ? serviceCancellationFee
+            : isDeepCleaning
+              ? 299
+              : 99;
       }
 
       data = {
@@ -541,7 +752,7 @@ export default function BookingDetailsScreen({ route }: Props) {
         total_amount: booking.total_amount,
         paid_amount: actualPaidAmount,
         refund_amount: Math.max(0, actualPaidAmount - currentFee),
-        hours_until_service: diffHours
+        hours_until_service: diffHours,
       };
 
       setCancellationDetails(data);
@@ -559,7 +770,7 @@ export default function BookingDetailsScreen({ route }: Props) {
       showAlert({
         type: "warning",
         title: t("notifications.reasonRequired"),
-        message: t("notifications.reasonMessage")
+        message: t("notifications.reasonMessage"),
       });
       return;
     }
@@ -575,7 +786,7 @@ export default function BookingDetailsScreen({ route }: Props) {
       showAlert({
         type: "error",
         title: t("common.error"),
-        message: t("notifications.cancellationFailed")
+        message: t("notifications.cancellationFailed"),
       });
       console.error(err);
     } finally {
@@ -626,48 +837,69 @@ export default function BookingDetailsScreen({ route }: Props) {
     }
   };
 
-
   /* ================= STAFF DETAILS ================= */
 
   useEffect(() => {
     const fetchStaffDetails = async () => {
-      if (booking.assigned_staff_name) setStaffName(booking.assigned_staff_name);
-      if (booking.assigned_staff_phone) setStaffPhone(booking.assigned_staff_phone);
+      if (booking.assigned_staff_name)
+        setStaffName(booking.assigned_staff_name);
+      if (booking.assigned_staff_phone)
+        setStaffPhone(booking.assigned_staff_phone);
     };
 
     fetchStaffDetails();
-  }, [booking.assigned_staff_email, booking.assigned_staff_name, booking.assigned_staff_phone]);
+  }, [
+    booking.assigned_staff_email,
+    booking.assigned_staff_name,
+    booking.assigned_staff_phone,
+  ]);
 
   // Pull to refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const { booking: freshBooking, staff } = await getCustomerBookingDetails(booking.id);
+      const { booking: freshBooking, staff } = await getCustomerBookingDetails(
+        booking.id,
+      );
       if (freshBooking) {
         setBooking(freshBooking);
-        const normStatus = String(freshBooking.work_status || "").trim().toUpperCase();
+        const normStatus = String(freshBooking.work_status || "")
+          .trim()
+          .toUpperCase();
         const hasStaff = Boolean(
           freshBooking.assigned_staff_email ||
           freshBooking.assigned_staff_id ||
           freshBooking.assigned_staff_name ||
-          staff?.name
+          staff?.name,
         );
-        setIsEligibleToCancel(!['COMPLETED', 'CANCELLED', 'UNDER_REVIEW'].includes(normStatus) && !hasStaff);
+        setIsEligibleToCancel(
+          !["COMPLETED", "CANCELLED", "UNDER_REVIEW"].includes(normStatus) &&
+            !hasStaff,
+        );
       }
       if (staff) {
         if (staff.name) setStaffName(staff.name);
         if (staff.phone) setStaffPhone(staff.phone);
       }
     } catch (err) {
-      console.error('Error refreshing booking:', err);
+      console.error("Error refreshing booking:", err);
     } finally {
       setRefreshing(false);
     }
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      edges={["top"]}
+    >
+      <LoadingOverlay
+        visible={isFocused && isInitialLoading && !refreshing}
+        message="Loading booking details..."
+      />
+
       <ScrollView
+        ref={scrollViewRef}
         style={{ flex: 1, backgroundColor: theme.background }}
         contentContainerStyle={[styles.container, bottomNavPadding]}
         refreshControl={
@@ -681,210 +913,426 @@ export default function BookingDetailsScreen({ route }: Props) {
         }
       >
         {/* HEADER */}
-        <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={[styles.title, { color: theme.text }]}>{t("bookingDetails.title")}</Text>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: theme.background,
+              borderBottomColor: theme.border,
+            },
+          ]}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t("bookingDetails.title")}
+            </Text>
             <TouchableOpacity
               onPress={() => {
                 const phoneNumber = "tel:7617618567";
-                Linking.canOpenURL(phoneNumber).then(supported => {
+                Linking.canOpenURL(phoneNumber).then((supported) => {
                   if (supported) Linking.openURL(phoneNumber);
                 });
               }}
               style={[styles.helpBtn, { borderColor: theme.border }]}
             >
-              <Ionicons name="help-circle-outline" size={20} color={theme.primary} />
-              <Text style={[styles.helpText, { color: theme.primary }]}>Help</Text>
+              <Ionicons
+                name="help-circle-outline"
+                size={20}
+                color={theme.primary}
+              />
+              <Text style={[styles.helpText, { color: theme.primary }]}>
+                Help
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* CANCELLATION WARNING BANNER */}
-        {diffHours <= 6 && diffHours > 0 && !['CANCELLED', 'COMPLETED'].includes(normalizedWorkStatus) && (
-          <View style={styles.warningBanner}>
-            <Ionicons name="alert-circle" size={18} color="#ef4444" />
-            <Text style={styles.warningText}>
-              Cancellation within 6 hours of service incurs a fee of ₹{serviceCancellationFee !== null ? serviceCancellationFee : (isDeepCleaning ? '299' : '99')}.
-            </Text>
-          </View>
-        )}
+        {diffHours <= 6 &&
+          diffHours > 0 &&
+          !["CANCELLED", "COMPLETED"].includes(normalizedWorkStatus) && (
+            <View style={styles.warningBanner}>
+              <Ionicons name="alert-circle" size={18} color="#ef4444" />
+              <Text style={styles.warningText}>
+                Cancellation within 6 hours of service incurs a fee of ₹
+                {serviceCancellationFee !== null
+                  ? serviceCancellationFee
+                  : isDeepCleaning
+                    ? "299"
+                    : "99"}
+                .
+              </Text>
+            </View>
+          )}
 
-        <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.customerDetails")}</Text>
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-          <Text style={[styles.bold, { color: theme.text }]}>{booking.customer_name || 'N/A'}</Text>
-          <Text style={{ color: theme.text }}>{booking.email || 'N/A'}</Text>
-          <Text style={{ color: theme.text }}>{booking.phone_number || 'N/A'}</Text>
+        <Text style={[styles.section, { color: theme.textLight }]}>
+          {t("bookingDetails.customerDetails")}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.bold, { color: theme.text }]}>
+            {booking.customer_name || "N/A"}
+          </Text>
+          <Text style={{ color: theme.text }}>{booking.email || "N/A"}</Text>
+          <Text style={{ color: theme.text }}>
+            {booking.phone_number || "N/A"}
+          </Text>
         </View>
 
-        <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.serviceAddress")}</Text>
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-          <Text style={{ color: theme.text }}>{booking.full_address || 'No address provided'}</Text>
+        <Text style={[styles.section, { color: theme.textLight }]}>
+          {t("bookingDetails.serviceAddress")}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
+          <Text style={{ color: theme.text }}>
+            {booking.full_address || "No address provided"}
+          </Text>
         </View>
 
         {/* SERVICES */}
-        <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.services")}</Text>
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+        <Text style={[styles.section, { color: theme.textLight }]}>
+          {t("bookingDetails.services")}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
           {services.length > 0 ? (
             services.map((s: any, index: number) => (
-              <View key={s.id || index} style={[styles.serviceRow, { borderBottomColor: theme.border }]}>
+              <View
+                key={s.id || index}
+                style={[styles.serviceRow, { borderBottomColor: theme.border }]}
+              >
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={[styles.bold, { color: theme.text }]}>{s.title || s.service_name || 'Service'}</Text>
+                  <Text style={[styles.bold, { color: theme.text }]}>
+                    {s.title || s.service_name || "Service"}
+                  </Text>
                   {booking?.id ? (
-                    <Text style={{ color: theme.textLight, fontSize: 13, marginTop: 3, fontWeight: '500' }}>
+                    <Text
+                      style={{
+                        color: theme.textLight,
+                        fontSize: 13,
+                        marginTop: 3,
+                        fontWeight: "500",
+                      }}
+                    >
                       Booking ID: #{booking.id}
                     </Text>
                   ) : null}
-                  <Text style={{ color: theme.textLight, marginTop: 2 }}>{s.duration || 'N/A'}</Text>
+                  <Text style={{ color: theme.textLight, marginTop: 2 }}>
+                    {s.duration || "N/A"}
+                  </Text>
                 </View>
-                <Text style={{ fontWeight: "700", flexShrink: 0, color: theme.text }}>
-                  {String(s.price || '0').startsWith('₹') ? s.price : `₹${s.price || 0}`}
+                <Text
+                  style={{
+                    fontWeight: "700",
+                    flexShrink: 0,
+                    color: theme.text,
+                  }}
+                >
+                  {String(s.price || "0").startsWith("₹")
+                    ? s.price
+                    : `₹${s.price || 0}`}
                 </Text>
               </View>
             ))
           ) : (
-            <Text style={{ color: theme.text }}>{t("bookingDetails.noServices")}</Text>
+            <Text style={{ color: theme.text }}>
+              {t("bookingDetails.noServices")}
+            </Text>
           )}
         </View>
 
-        <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.schedule")}</Text>
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+        <Text style={[styles.section, { color: theme.textLight }]}>
+          {t("bookingDetails.schedule")}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
           <Text style={{ color: theme.text }}>
-            {booking.booking_date || 'N/A'} at {booking.booking_time || 'N/A'}
+            {booking.booking_date || "N/A"} at {booking.booking_time || "N/A"}
           </Text>
         </View>
 
         {/* PAYMENT */}
-        <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.payment")}</Text>
-        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+        <Text style={[styles.section, { color: theme.textLight }]}>
+          {t("bookingDetails.payment")}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.background, borderColor: theme.border },
+          ]}
+        >
           <View style={styles.row}>
-            <Text style={[styles.bold, { color: theme.text }]}>{t("bookingDetails.total")}</Text>
-            <Text style={[styles.bold, { color: theme.text }]}>₹{booking.total_amount}</Text>
+            <Text style={[styles.bold, { color: theme.text }]}>
+              {t("bookingDetails.total")}
+            </Text>
+            <Text style={[styles.bold, { color: theme.text }]}>
+              ₹{booking.total_amount}
+            </Text>
           </View>
 
-          {(booking.paid_amount !== undefined && booking.paid_amount !== null) && (
-            <View style={[styles.row, { marginTop: 4 }]}>
-              <Text style={{ color: theme.textLight }}>Paid Amount</Text>
-              <Text style={{ color: theme.text, fontWeight: '600' }}>₹{booking.paid_amount}</Text>
-            </View>
-          )}
-
-          {(booking.remaining_amount !== undefined && booking.remaining_amount !== null && Number(booking.remaining_amount) > 0) && (
-            <View style={[styles.row, { marginTop: 4 }]}>
-              <Text style={{ color: theme.textLight }}>Remaining Amount</Text>
-              <Text style={{ color: theme.error || '#ef4444', fontWeight: '700' }}>₹{booking.remaining_amount}</Text>
-            </View>
-          )}
-
-          <Text style={{ color: theme.text, marginTop: 8 }}>{t("bookingDetails.status")}: {booking.payment_status}</Text>
-
-          {(booking.remaining_amount !== undefined && booking.remaining_amount !== null && Number(booking.remaining_amount) > 0 && booking.payment_status !== "completed") && (
-            <TouchableOpacity
-              style={{
-                marginTop: 16,
-                backgroundColor: theme.primary,
-                paddingVertical: 12,
-                borderRadius: 8,
-                alignItems: 'center'
-              }}
-              onPress={handlePayRemainingAmount}
-              disabled={processingPayment}
-            >
-              {processingPayment ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>
-                  Pay Remaining ₹{booking.remaining_amount}
+          {booking.paid_amount !== undefined &&
+            booking.paid_amount !== null && (
+              <View style={[styles.row, { marginTop: 4 }]}>
+                <Text style={{ color: theme.textLight }}>Paid Amount</Text>
+                <Text style={{ color: theme.text, fontWeight: "600" }}>
+                  ₹{booking.paid_amount}
                 </Text>
-              )}
-            </TouchableOpacity>
-          )}
+              </View>
+            )}
+
+          {booking.remaining_amount !== undefined &&
+            booking.remaining_amount !== null &&
+            Number(booking.remaining_amount) > 0 && (
+              <View style={[styles.row, { marginTop: 4 }]}>
+                <Text style={{ color: theme.textLight }}>Remaining Amount</Text>
+                <Text
+                  style={{ color: theme.error || "#ef4444", fontWeight: "700" }}
+                >
+                  ₹{booking.remaining_amount}
+                </Text>
+              </View>
+            )}
+
+          <Text style={{ color: theme.text, marginTop: 8 }}>
+            {t("bookingDetails.status")}: {booking.payment_status}
+          </Text>
+
+          {booking.remaining_amount !== undefined &&
+            booking.remaining_amount !== null &&
+            Number(booking.remaining_amount) > 0 &&
+            booking.payment_status !== "completed" && (
+              <TouchableOpacity
+                style={{
+                  marginTop: 16,
+                  backgroundColor: theme.primary,
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+                onPress={handlePayRemainingAmount}
+                disabled={processingPayment}
+              >
+                {processingPayment ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <Text
+                    style={{ color: "#000", fontWeight: "700", fontSize: 15 }}
+                  >
+                    Pay Remaining ₹{booking.remaining_amount}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
         </View>
 
         {/* STAFF ASSIGNMENT - Only show for non-completed bookings */}
-        {normalizedWorkStatus !== "COMPLETED" && normalizedWorkStatus !== "CANCELLED" && booking.payment_status !== "failed" && (
-          <>
-            <Text style={[styles.section, { color: theme.textLight }]}>{t("bookingDetails.staffAssignment")}</Text>
-            <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
-              {!booking.assigned_staff_email ? (
-                <View style={[styles.pendingContainer, { backgroundColor: theme.surfaceVariant }]}>
-                  <Text style={[styles.pendingText, { color: theme.text }]}>
-                    {t("bookingDetails.staffPending")}
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <View style={[styles.assignedHeader, { backgroundColor: isDark ? "rgba(34, 197, 94, 0.2)" : "#dcfce7" }]}>
-                    <Text style={[styles.assignedLabel, { color: isDark ? "#4ade80" : "#166534" }]}>{t("bookingDetails.staffAssigned")}</Text>
-                  </View>
-
-                  {/* Staff Name & Phone */}
-                  {staffName ? (
-                    <Text style={[styles.staffNameText, { color: theme.text }]}>
-                      {staffName}
+        {normalizedWorkStatus !== "COMPLETED" &&
+          normalizedWorkStatus !== "CANCELLED" &&
+          booking.payment_status !== "failed" && (
+            <>
+              <Text style={[styles.section, { color: theme.textLight }]}>
+                {t("bookingDetails.staffAssignment")}
+              </Text>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                {!booking.assigned_staff_email ? (
+                  <View
+                    style={[
+                      styles.pendingContainer,
+                      { backgroundColor: theme.surfaceVariant },
+                    ]}
+                  >
+                    <Text style={[styles.pendingText, { color: theme.text }]}>
+                      {t("bookingDetails.staffPending")}
                     </Text>
-                  ) : null}
-
-                  {staffPhone ? (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        const url = `tel:${staffPhone}`;
-                        Linking.canOpenURL(url).then((supported) => {
-                          if (supported) {
-                            Linking.openURL(url);
-                          }
-                        });
-                      }}
-                      style={[styles.staffPhoneCard, { backgroundColor: theme.background, borderColor: theme.border }]}
+                  </View>
+                ) : (
+                  <>
+                    <View
+                      style={[
+                        styles.assignedHeader,
+                        {
+                          backgroundColor: isDark
+                            ? "rgba(34, 197, 94, 0.2)"
+                            : "#dcfce7",
+                        },
+                      ]}
                     >
-                      <View style={[styles.staffPhoneIcon, { backgroundColor: theme.surfaceVariant }]}>
-                        <Text style={{ fontSize: 18 }}>📞</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.staffPhoneLabel, { color: theme.textLight }]}>Call Staff</Text>
-                        <Text style={[styles.staffPhoneNumber, { color: theme.text }]}>
-                          {staffPhone.replace(/^\+?91/, '')}
+                      <Text
+                        style={[
+                          styles.assignedLabel,
+                          { color: isDark ? "#4ade80" : "#166534" },
+                        ]}
+                      >
+                        {t("bookingDetails.staffAssigned")}
+                      </Text>
+                    </View>
+
+                    {/* Staff Name & Phone */}
+                    {staffName ? (
+                      <Text
+                        style={[styles.staffNameText, { color: theme.text }]}
+                      >
+                        {staffName}
+                      </Text>
+                    ) : null}
+
+                    {staffPhone ? (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const url = `tel:${staffPhone}`;
+                          Linking.canOpenURL(url).then((supported) => {
+                            if (supported) {
+                              Linking.openURL(url);
+                            }
+                          });
+                        }}
+                        style={[
+                          styles.staffPhoneCard,
+                          {
+                            backgroundColor: theme.background,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.staffPhoneIcon,
+                            { backgroundColor: theme.surfaceVariant },
+                          ]}
+                        >
+                          <Text style={{ fontSize: 18 }}>📞</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.staffPhoneLabel,
+                              { color: theme.textLight },
+                            ]}
+                          >
+                            Call Staff
+                          </Text>
+                          <Text
+                            style={[
+                              styles.staffPhoneNumber,
+                              { color: theme.text },
+                            ]}
+                          >
+                            {staffPhone.replace(/^\+?91/, "")}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {/* STAFF ASSIGNMENT - Only show for non-completed bookings */}
+                    <View
+                      style={{
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.border,
+                        marginBottom: 16,
+                        marginTop: 4,
+                      }}
+                    />
+
+                    <View style={styles.otpContainer}>
+                      <View
+                        style={[
+                          styles.otpBox,
+                          { backgroundColor: theme.surfaceVariant },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.otpLabel, { color: theme.textLight }]}
+                        >
+                          {t("bookingDetails.startOtp")}
+                        </Text>
+                        <Text style={[styles.otpCode, { color: theme.text }]}>
+                          {booking.startotp || "N/A"}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.otpSubtext,
+                            { color: theme.textLight },
+                          ]}
+                        >
+                          {t("bookingDetails.startOtpHelp")}
                         </Text>
                       </View>
-                    </TouchableOpacity>
-                  ) : null}
-
-                  {/* STAFF ASSIGNMENT - Only show for non-completed bookings */}
-                  <View style={{ borderBottomWidth: 1, borderBottomColor: theme.border, marginBottom: 16, marginTop: 4 }} />
-
-                  <View style={styles.otpContainer}>
-                    <View style={[styles.otpBox, { backgroundColor: theme.surfaceVariant }]}>
-                      <Text style={[styles.otpLabel, { color: theme.textLight }]}>{t("bookingDetails.startOtp")}</Text>
-                      <Text style={[styles.otpCode, { color: theme.text }]}>{booking.startotp || "N/A"}</Text>
-                      <Text style={[styles.otpSubtext, { color: theme.textLight }]}>{t("bookingDetails.startOtpHelp")}</Text>
+                      <View
+                        style={[
+                          styles.otpBox,
+                          { backgroundColor: theme.surfaceVariant },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.otpLabel, { color: theme.textLight }]}
+                        >
+                          {t("bookingDetails.endOtp")}
+                        </Text>
+                        <Text style={[styles.otpCode, { color: theme.text }]}>
+                          {booking.endotp || "N/A"}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.otpSubtext,
+                            { color: theme.textLight },
+                          ]}
+                        >
+                          {t("bookingDetails.endOtpHelp")}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={[styles.otpBox, { backgroundColor: theme.surfaceVariant }]}>
-                      <Text style={[styles.otpLabel, { color: theme.textLight }]}>{t("bookingDetails.endOtp")}</Text>
-                      <Text style={[styles.otpCode, { color: theme.text }]}>{booking.endotp || "N/A"}</Text>
-                      <Text style={[styles.otpSubtext, { color: theme.textLight }]}>{t("bookingDetails.endOtpHelp")}</Text>
-                    </View>
-                  </View>
 
-                  <Text style={styles.otpHint}>
-                    {t("bookingDetails.otpInstruction")}
-                  </Text>
-                </>
-              )}
-            </View>
-          </>
-        )}
+                    <Text style={styles.otpHint}>
+                      {t("bookingDetails.otpInstruction")}
+                    </Text>
+                  </>
+                )}
+              </View>
+            </>
+          )}
 
         {/* CANCEL BUTTON - Hidden once partner is assigned */}
-        {normalizedWorkStatus !== 'CANCELLED' &&
-         normalizedWorkStatus !== 'COMPLETED' &&
-         booking.payment_status !== 'failed' &&
-         normalizedWorkStatus !== 'PAYMENT FAILED' &&
-         !isStaffAssigned ? (
+        {normalizedWorkStatus !== "CANCELLED" &&
+        normalizedWorkStatus !== "COMPLETED" &&
+        booking.payment_status !== "failed" &&
+        normalizedWorkStatus !== "PAYMENT FAILED" &&
+        !isStaffAssigned ? (
           <View>
             <TouchableOpacity
               style={[
                 styles.cancelButton,
-                !isEligibleToCancel ? styles.disabledCancelButton : null
+                !isEligibleToCancel ? styles.disabledCancelButton : null,
               ]}
               onPress={handleCancelBooking}
               disabled={cancelling || fetchingFees}
@@ -892,11 +1340,15 @@ export default function BookingDetailsScreen({ route }: Props) {
               {cancelling || fetchingFees ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.cancelButtonText}>{t("bookingDetails.cancelBooking")}</Text>
+                <Text style={styles.cancelButtonText}>
+                  {t("bookingDetails.cancelBooking")}
+                </Text>
               )}
             </TouchableOpacity>
             {!isEligibleToCancel && (
-              <Text style={[styles.expiryNote, { color: theme.error || '#ef4444' }]}>
+              <Text
+                style={[styles.expiryNote, { color: theme.error || "#ef4444" }]}
+              >
                 {t("bookingDetails.cancellationExpired")}
               </Text>
             )}
@@ -904,21 +1356,38 @@ export default function BookingDetailsScreen({ route }: Props) {
         ) : null}
 
         {/* CANCELLED STATUS */}
-        {booking.work_status === 'CANCELLED' && (
-          <View style={[
-            styles.cancelButton,
-            styles.disabledButton,
-            booking.refund_status === 'REFUNDED' ? styles.refundCompletedButton : null,
-            (booking.refund_status && booking.refund_status !== 'REFUNDED') ? styles.refundPendingButton : null
-          ]}>
+        {booking.work_status === "CANCELLED" && (
+          <View
+            style={[
+              styles.cancelButton,
+              styles.disabledButton,
+              booking.refund_status === "REFUNDED"
+                ? styles.refundCompletedButton
+                : null,
+              booking.refund_status && booking.refund_status !== "REFUNDED"
+                ? styles.refundPendingButton
+                : null,
+            ]}
+          >
             <Text style={styles.cancelButtonText}>
-              {booking.refund_status === 'REFUNDED' ? t("bookingDetails.refundCompleted") :
-                booking.refund_status === 'PENDING' ? t("bookingDetails.refundPending") :
-                  (booking.refund_status && booking.refund_status !== 'REFUNDED') ? t("bookingDetails.refundInitiated") :
-                    t("bookingDetails.bookingCancelled")}
+              {booking.refund_status === "REFUNDED"
+                ? t("bookingDetails.refundCompleted")
+                : booking.refund_status === "PENDING"
+                  ? t("bookingDetails.refundPending")
+                  : booking.refund_status &&
+                      booking.refund_status !== "REFUNDED"
+                    ? t("bookingDetails.refundInitiated")
+                    : t("bookingDetails.bookingCancelled")}
             </Text>
-            {booking.refund_status && booking.refund_status !== 'REFUNDED' && (
-              <Text style={{ color: '#f1f5f9', fontSize: 13, marginTop: 6, fontWeight: '500' }}>
+            {booking.refund_status && booking.refund_status !== "REFUNDED" && (
+              <Text
+                style={{
+                  color: "#f1f5f9",
+                  fontSize: 13,
+                  marginTop: 6,
+                  fontWeight: "500",
+                }}
+              >
                 {t("bookingDetails.refundNote")}
               </Text>
             )}
@@ -927,22 +1396,64 @@ export default function BookingDetailsScreen({ route }: Props) {
 
         {/* REVIEW SECTION (Only if Completed) */}
         {normalizedWorkStatus === "COMPLETED" && (
-          <View style={[styles.reviewContainer, { backgroundColor: theme.background }]}>
-            <Text style={[styles.section, { color: theme.textLight }]}>{t("serviceDetail.reviews")}</Text>
-            <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+          <View
+            style={[
+              styles.reviewContainer,
+              { backgroundColor: theme.background },
+            ]}
+          >
+            <Text style={[styles.section, { color: theme.textLight }]}>
+              {t("serviceDetail.reviews")}
+            </Text>
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
               {review ? (
                 <View>
-                  <Text style={[styles.reviewLabel, { color: theme.textLight }]}>{t("review.yourRating")}</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                    <Text style={{ fontSize: 24, fontWeight: "bold", color: "#F4C430", marginRight: 8 }}>
+                  <Text
+                    style={[styles.reviewLabel, { color: theme.textLight }]}
+                  >
+                    {t("review.yourRating")}
+                  </Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 24,
+                        fontWeight: "bold",
+                        color: "#F4C430",
+                        marginRight: 8,
+                      }}
+                    >
                       {review.rating} ★
                     </Text>
                     <Text style={{ color: theme.textLight }}>
-                      {review.rating >= 4 ? "Extremely Good! 🤩" : review.rating >= 3 ? "Good 🙂" : "Could be better 😐"}
+                      {review.rating >= 4
+                        ? "Extremely Good! 🤩"
+                        : review.rating >= 3
+                          ? "Good 🙂"
+                          : "Could be better 😐"}
                     </Text>
                   </View>
                   {review.comment ? (
-                    <Text style={{ fontStyle: "italic", color: theme.text, marginBottom: 12 }}>
+                    <Text
+                      style={{
+                        fontStyle: "italic",
+                        color: theme.text,
+                        marginBottom: 12,
+                      }}
+                    >
                       "{review.comment}"
                     </Text>
                   ) : null}
@@ -951,7 +1462,9 @@ export default function BookingDetailsScreen({ route }: Props) {
                     style={styles.editReviewBtn}
                     onPress={handleRateService}
                   >
-                    <Text style={styles.editReviewText}>{t("review.editReview")}</Text>
+                    <Text style={styles.editReviewText}>
+                      {t("review.editReview")}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -963,7 +1476,9 @@ export default function BookingDetailsScreen({ route }: Props) {
                     style={styles.rateButton}
                     onPress={handleRateService}
                   >
-                    <Text style={styles.rateButtonText}>{t("review.rateService")}</Text>
+                    <Text style={styles.rateButtonText}>
+                      {t("review.rateService")}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -973,35 +1488,82 @@ export default function BookingDetailsScreen({ route }: Props) {
 
         {/* SERVICE CHECKLIST */}
         {normalizedWorkStatus !== "CANCELLED" && (
-          <View style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={[styles.section, { color: theme.text, marginBottom: 0, marginTop: 0 }]}>Service Checklist</Text>
+          <View
+            style={{ marginBottom: 20 }}
+            onLayout={(event) => {
+              checklistPositionRef.current = event.nativeEvent.layout.y;
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text
+                style={[
+                  styles.section,
+                  { color: theme.text, marginBottom: 0, marginTop: 0 },
+                ]}
+              >
+                Service Checklist
+              </Text>
               {normalizedWorkStatus === "UNDER_REVIEW" && (
-                <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? "#4ade80" : "#16a34a" }}>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "700",
+                    color: isDark ? "#4ade80" : "#16a34a",
+                  }}
+                >
                   {checklistProgress} / {checklistItems.length} completed
                 </Text>
               )}
             </View>
 
             {normalizedWorkStatus !== "UNDER_REVIEW" ? (
-              <View style={{
-                backgroundColor: theme.surfaceVariant,
-                padding: 24,
-                borderRadius: 12,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderStyle: "dashed"
-              }}>
-                <Ionicons name="lock-closed" size={32} color={theme.textLight} style={{ marginBottom: 12 }} />
-                <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700", textAlign: "center", marginBottom: 6 }}>
+              <View
+                style={{
+                  backgroundColor: theme.surfaceVariant,
+                  padding: 24,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  borderStyle: "dashed",
+                }}
+              >
+                <Ionicons
+                  name="lock-closed"
+                  size={32}
+                  color={theme.textLight}
+                  style={{ marginBottom: 12 }}
+                />
+                <Text
+                  style={{
+                    color: theme.text,
+                    fontSize: 16,
+                    fontWeight: "700",
+                    textAlign: "center",
+                    marginBottom: 6,
+                  }}
+                >
                   Checklist Locked
                 </Text>
-                <Text style={{ color: theme.textLight, fontSize: 13, textAlign: "center", lineHeight: 20 }}>
+                <Text
+                  style={{
+                    color: theme.textLight,
+                    fontSize: 13,
+                    textAlign: "center",
+                    lineHeight: 20,
+                  }}
+                >
                   {/* Service must be completed (Start and End OTPs verified) to unlock this checklist. */}
-                  Checklist will be available once the service moves to UNDER_REVIEW status.
-
+                  Checklist will be available once the service moves to
+                  UNDER_REVIEW status.
                 </Text>
               </View>
             ) : (
@@ -1014,27 +1576,37 @@ export default function BookingDetailsScreen({ route }: Props) {
                       activeOpacity={0.7}
                       onPress={() => toggleChecklistItem(index)}
                       style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
+                        flexDirection: "row",
+                        alignItems: "center",
                         marginBottom: 8,
                         backgroundColor: theme.surfaceVariant,
                         padding: 12,
-                        borderRadius: 8
+                        borderRadius: 8,
                       }}
                     >
                       <Ionicons
                         name={isChecked ? "checkbox" : "square-outline"}
                         size={22}
-                        color={isChecked ? (isDark ? "#4ade80" : "#16a34a") : theme.textLight}
+                        color={
+                          isChecked
+                            ? isDark
+                              ? "#4ade80"
+                              : "#16a34a"
+                            : theme.textLight
+                        }
                         style={{ marginRight: 12 }}
                       />
-                      <Text style={{
-                        flex: 1,
-                        fontSize: 14,
-                        color: isChecked ? theme.textLight : theme.text,
-                        textDecorationLine: isChecked ? 'line-through' : 'none',
-                        opacity: isChecked ? 0.6 : 1
-                      }}>
+                      <Text
+                        style={{
+                          flex: 1,
+                          fontSize: 14,
+                          color: isChecked ? theme.textLight : theme.text,
+                          textDecorationLine: isChecked
+                            ? "line-through"
+                            : "none",
+                          opacity: isChecked ? 0.6 : 1,
+                        }}
+                      >
                         {item}
                       </Text>
                     </TouchableOpacity>
@@ -1043,12 +1615,15 @@ export default function BookingDetailsScreen({ route }: Props) {
 
                 <TouchableOpacity
                   style={{
-                    backgroundColor: isChecklistSubmitted ? "#10B981" : "#F4C430",
+                    backgroundColor: isChecklistSubmitted
+                      ? "#10B981"
+                      : "#F4C430",
                     paddingVertical: 14,
                     borderRadius: 12,
                     alignItems: "center",
                     marginTop: 12,
-                    opacity: (submittingChecklist || isChecklistSubmitted) ? 0.7 : 1
+                    opacity:
+                      submittingChecklist || isChecklistSubmitted ? 0.7 : 1,
                   }}
                   onPress={handleCustomerSubmit}
                   disabled={submittingChecklist || isChecklistSubmitted}
@@ -1056,7 +1631,13 @@ export default function BookingDetailsScreen({ route }: Props) {
                   {submittingChecklist ? (
                     <ActivityIndicator color="#111" />
                   ) : (
-                    <Text style={{ color: isChecklistSubmitted ? "#fff" : "#111", fontWeight: "700", fontSize: 16 }}>
+                    <Text
+                      style={{
+                        color: isChecklistSubmitted ? "#fff" : "#111",
+                        fontWeight: "700",
+                        fontSize: 16,
+                      }}
+                    >
                       {isChecklistSubmitted ? "Submitted" : "Submit Checklist"}
                     </Text>
                   )}
@@ -1074,55 +1655,124 @@ export default function BookingDetailsScreen({ route }: Props) {
           onRequestClose={() => setShowCancelModal(false)}
           statusBarTranslucent={true}
         >
-          <KeyboardAvoidingView
-            behavior="padding"
-            style={styles.modalOverlay}
-          >
+          <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
             <AnimatedGradientBorder
               borderRadius={20}
               borderWidth={2}
               animationSpeed={3}
               style={{ width: "100%", maxWidth: 360 }}
             >
-              <View style={[styles.modalContent, { width: "100%", borderRadius: 20, margin: 0, backgroundColor: theme.background }]}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>{t("bookingDetails.cancelModalTitle")}</Text>
-                <Text style={[styles.modalSubtitle, { color: theme.textLight }]}>
+              <View
+                style={[
+                  styles.modalContent,
+                  {
+                    width: "100%",
+                    borderRadius: 20,
+                    margin: 0,
+                    backgroundColor: theme.background,
+                  },
+                ]}
+              >
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t("bookingDetails.cancelModalTitle")}
+                </Text>
+                <Text
+                  style={[styles.modalSubtitle, { color: theme.textLight }]}
+                >
                   {t("bookingDetails.cancelModalSubtitle")}
                 </Text>
 
                 {/* CANCELLATION SUMMARY */}
                 {cancellationDetails && (
-                  <View style={[styles.feeContainer, { backgroundColor: theme.surfaceVariant, borderColor: theme.border }]}>
+                  <View
+                    style={[
+                      styles.feeContainer,
+                      {
+                        backgroundColor: theme.surfaceVariant,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <View style={styles.feeRow}>
-                      <Text style={[styles.feeLabel, { color: theme.text }]}>Total Amount</Text>
-                      <Text style={[styles.feeValue, { color: theme.text }]}>₹{cancellationDetails.total_amount}</Text>
-                    </View>
-                    {cancellationDetails.paid_amount !== undefined && cancellationDetails.paid_amount !== cancellationDetails.total_amount && (
-                      <View style={styles.feeRow}>
-                        <Text style={[styles.feeLabel, { color: theme.text }]}>Paid Amount</Text>
-                        <Text style={[styles.feeValue, { color: theme.text }]}>₹{cancellationDetails.paid_amount}</Text>
-                      </View>
-                    )}
-                    <View style={styles.feeRow}>
-                      <Text style={[styles.feeLabel, { color: theme.text }]}>Cancellation Charge</Text>
-                      <Text style={[styles.feeValue, { color: cancellationDetails.fee > 0 ? '#ef4444' : '#22c55e' }]}>
-                        {cancellationDetails.fee > 0 ? `- ₹${cancellationDetails.fee}` : 'Free'}
+                      <Text style={[styles.feeLabel, { color: theme.text }]}>
+                        Total Amount
+                      </Text>
+                      <Text style={[styles.feeValue, { color: theme.text }]}>
+                        ₹{cancellationDetails.total_amount}
                       </Text>
                     </View>
-                    <View style={[styles.feeRow, styles.feeTotalRow, { borderTopColor: theme.border }]}>
-                      <Text style={[styles.feeLabelTotal, { color: theme.text }]}>Final Refund</Text>
-                      <Text style={[styles.feeValueTotal, { color: theme.primary }]}>₹{cancellationDetails.refund_amount}</Text>
+                    {cancellationDetails.paid_amount !== undefined &&
+                      cancellationDetails.paid_amount !==
+                        cancellationDetails.total_amount && (
+                        <View style={styles.feeRow}>
+                          <Text
+                            style={[styles.feeLabel, { color: theme.text }]}
+                          >
+                            Paid Amount
+                          </Text>
+                          <Text
+                            style={[styles.feeValue, { color: theme.text }]}
+                          >
+                            ₹{cancellationDetails.paid_amount}
+                          </Text>
+                        </View>
+                      )}
+                    <View style={styles.feeRow}>
+                      <Text style={[styles.feeLabel, { color: theme.text }]}>
+                        Cancellation Charge
+                      </Text>
+                      <Text
+                        style={[
+                          styles.feeValue,
+                          {
+                            color:
+                              cancellationDetails.fee > 0
+                                ? "#ef4444"
+                                : "#22c55e",
+                          },
+                        ]}
+                      >
+                        {cancellationDetails.fee > 0
+                          ? `- ₹${cancellationDetails.fee}`
+                          : "Free"}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.feeRow,
+                        styles.feeTotalRow,
+                        { borderTopColor: theme.border },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.feeLabelTotal, { color: theme.text }]}
+                      >
+                        Final Refund
+                      </Text>
+                      <Text
+                        style={[styles.feeValueTotal, { color: theme.primary }]}
+                      >
+                        ₹{cancellationDetails.refund_amount}
+                      </Text>
                     </View>
                     {cancellationDetails.fee > 0 && (
                       <Text style={styles.feeNote}>
-                        * Fee applied as cancellation is within 6 hours of service.
+                        * Fee applied as cancellation is within 6 hours of
+                        service.
                       </Text>
                     )}
                   </View>
                 )}
 
                 <TextInput
-                  style={[styles.reasonInput, { backgroundColor: theme.surfaceVariant, color: theme.text, borderColor: theme.border }]}
+                  style={[
+                    styles.reasonInput,
+                    {
+                      backgroundColor: theme.surfaceVariant,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
                   placeholderTextColor={theme.textLight}
                   placeholder={t("bookingDetails.cancelReasonPlaceholder")}
                   value={cancelReason}
@@ -1137,7 +1787,9 @@ export default function BookingDetailsScreen({ route }: Props) {
                     onPress={() => setShowCancelModal(false)}
                     disabled={cancelling}
                   >
-                    <Text style={styles.modalCancelText}>{t("bookingDetails.dontCancel")}</Text>
+                    <Text style={styles.modalCancelText}>
+                      {t("bookingDetails.dontCancel")}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1148,7 +1800,9 @@ export default function BookingDetailsScreen({ route }: Props) {
                     {cancelling ? (
                       <ActivityIndicator color="#fff" />
                     ) : (
-                      <Text style={styles.modalConfirmText}>{t("bookingDetails.confirmCancel")}</Text>
+                      <Text style={styles.modalConfirmText}>
+                        {t("bookingDetails.confirmCancel")}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1166,8 +1820,141 @@ export default function BookingDetailsScreen({ route }: Props) {
           initialComment={review?.comment}
           isSubmitting={submittingReview}
         />
-
       </ScrollView>
+
+      {/* Service Checklist Reminder */}
+      <Modal
+        visible={showChecklistReminder}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {}}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.60)",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              backgroundColor: isDark ? "#1E293B" : "#FFFFFF",
+              borderRadius: 24,
+              padding: 26,
+              alignItems: "center",
+              elevation: 12,
+            }}
+          >
+            {/* Checklist Icon */}
+            <View
+              style={{
+                width: 84,
+                height: 84,
+                borderRadius: 42,
+                backgroundColor: isDark ? "rgba(244,196,48,0.15)" : "#FFF5D6",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 20,
+              }}
+            >
+              <Ionicons
+                name="clipboard-outline"
+                size={42}
+                color={isDark ? "#F4C430" : "#B88A00"}
+              />
+            </View>
+
+            {/* Title */}
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "800",
+                textAlign: "center",
+                color: theme.text,
+                marginBottom: 12,
+              }}
+            >
+              Your Service is Ready for Review!
+            </Text>
+
+            {/* Message */}
+            <Text
+              style={{
+                fontSize: 15,
+                lineHeight: 23,
+                textAlign: "center",
+                color: theme.textLight,
+                marginBottom: 24,
+              }}
+            >
+              Please complete the service checklist to confirm your experience.
+            </Text>
+
+            {/* Two-second progress bar */}
+            <View
+              style={{
+                width: "100%",
+                height: 5,
+                borderRadius: 5,
+                backgroundColor: isDark ? "#334155" : "#E5E7EB",
+                overflow: "hidden",
+              }}
+            >
+              <Animated.View
+                style={{
+                  height: "100%",
+                  borderRadius: 5,
+                  backgroundColor: "#F4C430",
+                  width: reminderProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0%", "100%"],
+                  }),
+                }}
+              />
+            </View>
+
+            <Text
+              style={{
+                fontSize: 12,
+                color: theme.textLight,
+                marginTop: 10,
+              }}
+            >
+              Closing automatically in 2 seconds
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      <ChecklistSuccessModal
+        visible={showChecklistSuccessModal}
+        onClose={() => {
+          setShowChecklistSuccessModal(false);
+
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name: "HomeDrawer",
+                params: {
+                  screen: "AuthenticatedScreens",
+                  params: {
+                    screen: "MainTabs",
+                    params: {
+                      screen: "HomeTab",
+                    },
+                  },
+                },
+              },
+            ],
+          });
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1185,20 +1972,20 @@ const styles = StyleSheet.create({
   },
 
   warningBanner: {
-    backgroundColor: '#fef2f2',
+    backgroundColor: "#fef2f2",
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: "#fecaca",
     borderRadius: 12,
     padding: 12,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginBottom: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   warningText: {
-    color: '#991b1b',
+    color: "#991b1b",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     flex: 1,
   },
 
@@ -1301,15 +2088,15 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   expiryNote: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: -10,
     marginBottom: 20,
   },
   helpBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
@@ -1318,7 +2105,7 @@ const styles = StyleSheet.create({
   },
   helpText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   disabledButton: {
     backgroundColor: "#94a3b8", // Gray for cancelled
@@ -1479,8 +2266,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   feeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 8,
   },
   feeTotalRow: {
@@ -1490,25 +2277,25 @@ const styles = StyleSheet.create({
   },
   feeLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   feeValue: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   feeLabelTotal: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   feeValueTotal: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   feeNote: {
     fontSize: 11,
-    color: '#ef4444',
-    fontStyle: 'italic',
+    color: "#ef4444",
+    fontStyle: "italic",
     marginTop: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

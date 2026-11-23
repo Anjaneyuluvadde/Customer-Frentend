@@ -7,10 +7,14 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  View
+  View,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Header from "../components/Header";
+import LoadingOverlay from "../components/LoadingOverlay";
 import { useLanguage } from "../context/LanguageContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBottomNavPadding } from "../hooks/useBottomNavPadding";
@@ -46,7 +50,7 @@ export default function MyBookingsScreen() {
     } catch (error) {
       console.error(
         "[CUSTOMER FASTAPI] Error fetching my bookings:",
-        error instanceof Error ? error.message : error
+        error instanceof Error ? error.message : error,
       );
       setBookings([]);
     } finally {
@@ -57,7 +61,7 @@ export default function MyBookingsScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchMyBookings();
-    }, [fetchMyBookings])
+    }, [fetchMyBookings]),
   );
 
   const onRefresh = async () => {
@@ -69,24 +73,35 @@ export default function MyBookingsScreen() {
   /* ================= FILTERS ================= */
 
   const currentBookings = useMemo(
-    () => bookings.filter((b) => {
-      const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
-      const normalizedPaymentStatus = String(b.payment_status || "").trim().toLowerCase();
-      return (
-        normalizedWorkStatus !== "COMPLETED" &&
-        normalizedWorkStatus !== "CANCELLED" &&
-        normalizedWorkStatus !== "PAYMENT FAILED" &&
-        normalizedPaymentStatus !== "failed"
-      );
-    }),
+    () =>
+      bookings.filter((b) => {
+        const normalizedWorkStatus = String(b.work_status || "")
+          .trim()
+          .toUpperCase();
+        const normalizedPaymentStatus = String(b.payment_status || "")
+          .trim()
+          .toLowerCase();
+        return (
+          normalizedWorkStatus !== "COMPLETED" &&
+          normalizedWorkStatus !== "CANCELLED" &&
+          normalizedWorkStatus !== "PAYMENT FAILED" &&
+          normalizedPaymentStatus !== "failed"
+        );
+      }),
     [bookings],
   );
 
   const completedBookings = useMemo(
-    () => bookings.filter((b) => {
-      const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
-      return normalizedWorkStatus === "COMPLETED" || normalizedWorkStatus === "CANCELLED";
-    }),
+    () =>
+      bookings.filter((b) => {
+        const normalizedWorkStatus = String(b.work_status || "")
+          .trim()
+          .toUpperCase();
+        return (
+          normalizedWorkStatus === "COMPLETED" ||
+          normalizedWorkStatus === "CANCELLED"
+        );
+      }),
     [bookings],
   );
 
@@ -95,35 +110,71 @@ export default function MyBookingsScreen() {
 
   /* ================= LOADING ================= */
 
-
-
   /* ================= UI ================= */
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }} edges={["top"]}>
-
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      edges={["top"]}
+    >
       {/* ── APP HEADER (logo + icons) ── */}
       <Header isCurved={true} />
 
+      <LoadingOverlay
+        visible={loading && !refreshing}
+        message="Loading your bookings..."
+      />
+
       {/* ── FIXED TITLE + TABS ── */}
-      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <Text style={[styles.title, { color: theme.text }]}>{t("bookings.title")}</Text>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <Text style={[styles.title, { color: theme.text }]}>
+          {t("bookings.title")}
+        </Text>
 
         <View style={styles.tabs}>
           <Pressable
-            style={[styles.tab, activeTab === "current" && { borderBottomColor: theme.text }]}
+            style={[
+              styles.tab,
+              activeTab === "current" && { borderBottomColor: theme.text },
+            ]}
             onPress={() => handleTabPress("current", 0)}
           >
-            <Text style={[styles.tabText, { color: activeTab === "current" ? theme.text : theme.textLight }]}>
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color: activeTab === "current" ? theme.text : theme.textLight,
+                },
+              ]}
+            >
               {t("bookings.current")} ({currentBookings.length})
             </Text>
           </Pressable>
 
           <Pressable
-            style={[styles.tab, activeTab === "completed" && { borderBottomColor: theme.text }]}
+            style={[
+              styles.tab,
+              activeTab === "completed" && { borderBottomColor: theme.text },
+            ]}
             onPress={() => handleTabPress("completed", 1)}
           >
-            <Text style={[styles.tabText, { color: activeTab === "completed" ? theme.text : theme.textLight }]}>
+            <Text
+              style={[
+                styles.tabText,
+                {
+                  color:
+                    activeTab === "completed" ? theme.text : theme.textLight,
+                },
+              ]}
+            >
               {t("bookings.completed")} ({completedBookings.length})
             </Text>
           </Pressable>
@@ -134,8 +185,16 @@ export default function MyBookingsScreen() {
       <FlatList
         ref={pagerRef}
         data={[
-          { key: "current", data: currentBookings, emptyKey: "bookings.noCurrent" },
-          { key: "completed", data: completedBookings, emptyKey: "bookings.noCompleted" },
+          {
+            key: "current",
+            data: currentBookings,
+            emptyKey: "bookings.noCurrent",
+          },
+          {
+            key: "completed",
+            data: completedBookings,
+            emptyKey: "bookings.noCompleted",
+          },
         ]}
         horizontal
         pagingEnabled
@@ -153,7 +212,10 @@ export default function MyBookingsScreen() {
             <FlatList
               data={item.data}
               keyExtractor={(b) => b.id}
-              contentContainerStyle={[{ padding: 16, flexGrow: 1 }, bottomNavPadding]}
+              contentContainerStyle={[
+                { padding: 16, flexGrow: 1 },
+                bottomNavPadding,
+              ]}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -164,16 +226,30 @@ export default function MyBookingsScreen() {
                 />
               }
               ListEmptyComponent={
-                <Text style={[styles.empty, { color: theme.textLight }]}>
-                  {t(item.emptyKey)}
-                </Text>
+                loading ? null : (
+                  <Text style={[styles.empty, { color: theme.textLight }]}>
+                    {t(item.emptyKey)}
+                  </Text>
+                )
               }
               renderItem={({ item: b }) => {
-                const normalizedWorkStatus = String(b.work_status || "").trim().toUpperCase();
+                const normalizedWorkStatus = String(b.work_status || "")
+                  .trim()
+                  .toUpperCase();
                 return (
-                  <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <View
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <View style={styles.cardHeader}>
-                      <Text style={[styles.name, { color: theme.text }]}>{b.customer_name}</Text>
+                      <Text style={[styles.name, { color: theme.text }]}>
+                        {b.customer_name}
+                      </Text>
                       <View
                         style={[
                           styles.statusBadge,
@@ -181,7 +257,8 @@ export default function MyBookingsScreen() {
                             ? styles.completed
                             : normalizedWorkStatus === "CANCELLED"
                               ? styles.cancelled
-                              : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
+                              : b.payment_status === "failed" ||
+                                  normalizedWorkStatus === "PAYMENT FAILED"
                                 ? styles.paymentFailed
                                 : b.assigned_staff_email
                                   ? styles.assigned
@@ -193,7 +270,8 @@ export default function MyBookingsScreen() {
                             ? t("bookings.status.completed")
                             : normalizedWorkStatus === "CANCELLED"
                               ? t("bookings.status.cancelled")
-                              : (b.payment_status === "failed" || normalizedWorkStatus === "PAYMENT FAILED")
+                              : b.payment_status === "failed" ||
+                                  normalizedWorkStatus === "PAYMENT FAILED"
                                 ? "PAYMENT FAILED"
                                 : b.assigned_staff_email
                                   ? t("bookings.status.assigned")
@@ -204,12 +282,26 @@ export default function MyBookingsScreen() {
                     <Text style={[styles.meta, { color: theme.textLight }]}>
                       {b.booking_date} {t("bookings.at")} {b.booking_time}
                     </Text>
-                    <Text style={[styles.meta, { color: theme.textLight }]}>{t("bookings.total")}: ₹{b.total_amount}</Text>
+                    <Text style={[styles.meta, { color: theme.textLight }]}>
+                      {t("bookings.total")}: ₹{b.total_amount}
+                    </Text>
                     <Pressable
-                      style={[styles.viewBtn, { backgroundColor: theme.primary }]}
-                      onPress={() => navigation.navigate("BookingDetails", { booking: b })}
+                      style={[
+                        styles.viewBtn,
+                        { backgroundColor: theme.primary },
+                      ]}
+                      onPress={() =>
+                        navigation.navigate("BookingDetails", { booking: b })
+                      }
                     >
-                      <Text style={[styles.viewText, { color: isDark ? theme.background : "#000" }]}>{t("bookings.view")}</Text>
+                      <Text
+                        style={[
+                          styles.viewText,
+                          { color: isDark ? theme.background : "#000" },
+                        ]}
+                      >
+                        {t("bookings.view")}
+                      </Text>
                     </Pressable>
                   </View>
                 );
